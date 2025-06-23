@@ -280,8 +280,13 @@ exports.create = (req, res) => {
                                   });
                                 }
 
-                                const digitalAddressID = parseInt(serviceEntry?.id || 0, 10);
-                                const hasDigitalService = serviceIds.includes(digitalAddressID);
+                                const hasDigitalService = serviceEntry && serviceIds.includes(parseInt(serviceEntry.id, 10));
+                                const digitalAddressID = hasDigitalService ? parseInt(serviceEntry.id, 10) : null;
+                                const otherServiceIds = serviceIds.filter(id => id !== digitalAddressID);
+
+                                const shouldSendDavOnly = hasDigitalService && otherServiceIds.length === 0;
+                                const shouldSendBoth = hasDigitalService && otherServiceIds.length > 0;
+                                const shouldSendCreateOnly = !hasDigitalService && otherServiceIds.length > 0;
 
                                 const sendApplicationEmail = () => {
                                   return createMail(
@@ -329,13 +334,49 @@ exports.create = (req, res) => {
                                     [{ name: name, email: email.trim() }],
                                     [{ name: "QC Team", email: "qc@screeningstar.com" }]
                                   )
-                                    .then(() => sendApplicationEmail())
+                                    .then(() => {
+                                      if (shouldSendBoth || shouldSendCreateOnly) {
+                                        return sendApplicationEmail();
+                                      } else {
+                                        return res.status(201).json({
+                                          status: true,
+                                          message: "Digital Address Verification Email sent successfully.",
+                                          data: {
+                                            candidate: result,
+                                            package,
+                                          },
+                                          token: newToken,
+                                        });
+                                      }
+                                    })
                                     .catch((emailError) => {
                                       console.error("Error sending digital address email:", emailError);
-                                      return sendApplicationEmail(); // continue anyway
+
+                                      // Attempt to still send application email if applicable
+                                      if (shouldSendBoth || shouldSendCreateOnly) {
+                                        return sendApplicationEmail();
+                                      } else {
+                                        return res.status(201).json({
+                                          status: true,
+                                          message: "Online Background Verification Form generated successfully (digital address email failed).",
+                                          candidate: result,
+                                          token: newToken,
+                                        });
+                                      }
                                     });
                                 } else {
-                                  return sendApplicationEmail();
+                                  // Only application email needs to be sent
+                                  if (shouldSendBoth || shouldSendCreateOnly) {
+                                    return sendApplicationEmail();
+                                  } else {
+                                    // If no email is to be sent at all (edge case)
+                                    return res.status(201).json({
+                                      status: true,
+                                      message: "Candidate created but no applicable service email to send.",
+                                      candidate: result,
+                                      token: newToken,
+                                    });
+                                  }
                                 }
                               });
                             });
