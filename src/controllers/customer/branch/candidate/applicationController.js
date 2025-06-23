@@ -246,100 +246,124 @@ exports.create = (req, res) => {
                         const serviceNames = [];
 
                         // Function to fetch service names recursively
-                        const fetchServiceNames = async () => {
-                          try {
-                            const serviceNames = [];
-
-                            for (let i = 0; i < serviceIds.length; i++) {
-                              const id = serviceIds[i];
-                              const currentService = await Service.getServiceRequiredDocumentsByServiceIdAsync(id);
-
-                              if (currentService?.title) {
-                                serviceNames.push(`${currentService.title}: ${currentService.description}`);
+                        const fetchServiceNames = (index = 0) => {
+                          if (index >= serviceIds.length) {
+                            // All service names fetched, now get app info
+                            return AppModel.appInfo("frontend", (err, appInfo) => {
+                              if (err) {
+                                console.error("Database error:", err);
+                                return res.status(500).json({
+                                  status: false,
+                                  message: err.message,
+                                  token: newToken,
+                                });
                               }
-                            }
 
-                            // Step 2: App Info
-                            const appInfo = await AppModel.appInfoAsync("frontend");
-                            const appHost = appInfo?.host || "www.screeningstar.in";
-                            const base64_app_id = btoa(result.insertId);
-                            const base64_branch_id = btoa(branch_id);
-                            const base64_customer_id = btoa(customer_id);
+                              const appHost = appInfo?.host || "www.screeningstar.in";
+                              const base64_app_id = btoa(result.insertId);
+                              const base64_branch_id = btoa(branch_id);
+                              const base64_customer_id = btoa(customer_id);
 
-                            const base64_link_with_ids = `YXBwX2lk=${base64_app_id}&YnJhbmNoX2lk=${base64_branch_id}&Y3VzdG9tZXJfaWQ==${base64_customer_id}`;
-                            const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
-                            const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
+                              const base64_link_with_ids = `YXBwX2lk=${base64_app_id}&YnJhbmNoX2lk=${base64_branch_id}&Y3VzdG9tZXJfaWQ==${base64_customer_id}`;
 
-                            // Step 3: Digital Address Check
-                            const serviceEntry = await Service.digitlAddressServiceAsync();
-                            const hasDigitalAddress = serviceEntry && serviceIds.includes(parseInt(serviceEntry.id, 10));
-                            const digitalAddressID = hasDigitalAddress ? parseInt(serviceEntry.id, 10) : null;
-                            const otherServiceIds = serviceIds.filter(id => id !== digitalAddressID);
+                              const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
+                              const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
 
-                            const shouldSendDavOnly = hasDigitalAddress && otherServiceIds.length === 0;
-                            const shouldSendBoth = hasDigitalAddress && otherServiceIds.length > 0;
-                            const shouldSendCreateOnly = !hasDigitalAddress && otherServiceIds.length > 0;
+                              // Fetch digital address service entry
+                              return Service.digitlAddressService((err, serviceEntry) => {
+                                if (err) {
+                                  console.error("Database error:", err);
+                                  return res.status(500).json({
+                                    status: false,
+                                    message: err.message,
+                                    token: newToken,
+                                  });
+                                }
 
-                            console.log(`shouldSendDavOnly - `, shouldSendDavOnly);
-                            console.log(`shouldSendBoth - `, shouldSendBoth);
-                            console.log(`shouldSendCreateOnly - `, shouldSendCreateOnly);
+                                const digitalAddressID = parseInt(serviceEntry?.id || 0, 10);
+                                const hasDigitalService = serviceIds.includes(digitalAddressID);
 
-                            // Step 4: Send Emails
-                            if (hasDigitalAddress) {
-                              await davMail(
-                                "candidate application",
-                                "dav",
-                                name,
-                                customer.name,
-                                dav_href,
-                                [{ name: name, email: email.trim() }],
-                                [{ name: "QC Team", email: "qc@screeningstar.com" }]
-                              ).catch((emailError) => {
-                                console.error("Error sending digital address email:", emailError);
-                                // continue anyway
+                                const sendApplicationEmail = () => {
+                                  return createMail(
+                                    "candidate application",
+                                    "create",
+                                    name,
+                                    currentCustomer.name,
+                                    result.insertId,
+                                    bgv_href,
+                                    serviceNames,
+                                    toArr || [],
+                                    ccArr || []
+                                  )
+                                    .then(() => {
+                                      return res.status(201).json({
+                                        status: true,
+                                        message: "Online Background Verification Form generated successfully.",
+                                        data: {
+                                          candidate: result,
+                                          package,
+                                        },
+                                        token: newToken,
+                                        toArr: toArr || [],
+                                        ccArr: ccArr || [],
+                                      });
+                                    })
+                                    .catch((emailError) => {
+                                      console.error("Error sending application creation email:", emailError);
+                                      return res.status(201).json({
+                                        status: true,
+                                        message: "Online Background Verification Form generated successfully.",
+                                        candidate: result,
+                                        token: newToken,
+                                      });
+                                    });
+                                };
+
+                                if (hasDigitalService) {
+                                  return davMail(
+                                    "candidate application",
+                                    "dav",
+                                    name,
+                                    customer.name,
+                                    dav_href,
+                                    [{ name: name, email: email.trim() }],
+                                    [{ name: "QC Team", email: "qc@screeningstar.com" }]
+                                  )
+                                    .then(() => sendApplicationEmail())
+                                    .catch((emailError) => {
+                                      console.error("Error sending digital address email:", emailError);
+                                      return sendApplicationEmail(); // continue anyway
+                                    });
+                                } else {
+                                  return sendApplicationEmail();
+                                }
+                              });
+                            });
+                          }
+
+                          const id = serviceIds[index];
+
+                          Service.getServiceRequiredDocumentsByServiceId(id, (err, currentService) => {
+                            if (err) {
+                              console.error("Error fetching service data:", err);
+                              return res.status(500).json({
+                                status: false,
+                                message: err.message,
+                                token: newToken,
                               });
                             }
 
-                            if (shouldSendCreateOnly || shouldSendBoth) {
-                              await createMail(
-                                "candidate application",
-                                "create",
-                                name,
-                                currentCustomer.name,
-                                result.insertId,
-                                bgv_href,
-                                serviceNames,
-                                toArr || [],
-                                ccArr || []
-                              );
+                            if (currentService?.title) {
+                              serviceNames.push(`${currentService.title}: ${currentService.description}`);
                             }
 
-                            // Final Response
-                            return res.status(201).json({
-                              status: true,
-                              message: "Online Background Verification Form generated successfully.",
-                              data: {
-                                candidate: result,
-                                package,
-                              },
-                              token: newToken,
-                              toArr: toArr || [],
-                              ccArr: ccArr || [],
-                            });
-
-                          } catch (err) {
-                            console.error("Error in fetchServiceNames:", err);
-                            return res.status(500).json({
-                              status: false,
-                              message: err.message || "Unexpected error occurred",
-                              token: newToken,
-                            });
-                          }
+                            // Continue to next service
+                            fetchServiceNames(index + 1);
+                          });
                         };
 
-                        // Start process
+                        // Start fetching service names
                         fetchServiceNames();
-
                       }
                     );
                   });
@@ -851,94 +875,96 @@ function sendNotificationEmails(
                                       });
                                     }
 
-                                    const hasDigitalAddress = serviceEntry && serviceIds.includes(parseInt(serviceEntry.id, 10));
-                                    const digitalAddressID = hasDigitalAddress ? parseInt(serviceEntry.id, 10) : null;
-                                    const otherServiceIds = serviceIds.filter(id => id !== digitalAddressID);
+                                    if (serviceEntry) {
+                                      const digitalAddressID = parseInt(
+                                        serviceEntry.id,
+                                        10
+                                      );
+                                      if (serviceIds.includes(digitalAddressID)) {
+                                        const toCC = [
+                                          { name: 'QC Team', email: 'qc@screeningstar.com' }
+                                        ];
 
-                                    const shouldSendDavOnly = hasDigitalAddress && otherServiceIds.length === 0;
-                                    const shouldSendBoth = hasDigitalAddress && otherServiceIds.length > 0;
-                                    const shouldSendCreateOnly = !hasDigitalAddress && otherServiceIds.length > 0;
-
-                                    console.log(`shouldSendDavOnly - `, shouldSendDavOnly);
-                                    console.log(`shouldSendBoth - `, shouldSendBoth);
-                                    console.log(`shouldSendCreateOnly - `, shouldSendCreateOnly);
-
-                                    // Send davMail if digital address exists
-                                    if (hasDigitalAddress) {
-                                      const toCC = [{ name: 'QC Team', email: 'qc@screeningstar.com' }];
-
-                                      davMail(
-                                        "candidate application",
-                                        "dav",
-                                        app.applicant_full_name,
-                                        customer.name,
-                                        dav_href,
-                                        [
-                                          {
-                                            name: app.applicant_full_name,
-                                            email: app.email_id.trim(),
-                                          },
-                                        ],
-                                        toCC
-                                      )
-                                        .then(() => {
-                                          console.log("Digital address verification mail sent.");
-                                        })
-                                        .catch((emailError) => {
-                                          console.error("Error sending digital address email:", emailError);
-                                          failedApplications++;
-                                        });
+                                        davMail(
+                                          "candidate application",
+                                          "dav",
+                                          app.applicant_full_name,
+                                          customer.name,
+                                          dav_href,
+                                          [
+                                            {
+                                              name: app.applicant_full_name,
+                                              email: app.email_id.trim(),
+                                            },
+                                          ],
+                                          toCC
+                                        )
+                                          .then(() => {
+                                            console.log(
+                                              "Digital address verification mail sent."
+                                            );
+                                          })
+                                          .catch((emailError) => {
+                                            console.error(
+                                              "Error sending digital address email:",
+                                              emailError
+                                            );
+                                            failedApplications++;
+                                          });
+                                      }
                                     }
 
-                                    // Send createMail if other services exist or if dav should not be sent alone
-                                    if (shouldSendBoth || shouldSendCreateOnly) {
-                                      createMail(
-                                        "candidate application",
-                                        "create",
-                                        app.applicant_full_name,
-                                        currentCustomer.name,
-                                        app.insertId,
-                                        bgv_href,
-                                        serviceNames,
-                                        createMailToArr || [],
-                                        createMailCCArr || []
-                                      )
-                                        .then(() => {
-                                          processedApplications++;
-                                        })
-                                        .catch((emailError) => {
-                                          console.error("Error sending application creation email:", emailError);
-                                          failedApplications++;
-                                        })
-                                        .finally(() => {
-                                          processedApplications++;
+                                    // Send application creation email
+                                    createMail(
+                                      "candidate application",
+                                      "create",
+                                      app.applicant_full_name,
+                                      currentCustomer.name,
+                                      app.insertId,
+                                      bgv_href,
+                                      serviceNames,
+                                      createMailToArr || [],
+                                      createMailCCArr || []
+                                    )
+                                      .then(() => {
+                                        processedApplications++;
+                                      })
+                                      .catch((emailError) => {
+                                        console.error(
+                                          "Error sending application creation email:",
+                                          emailError
+                                        );
+                                        failedApplications++;
+                                      })
+                                      .finally(() => {
+                                        processedApplications++;
 
-                                          if (
-                                            processedApplications + failedApplications === updatedApplications.length &&
-                                            !responseSent
-                                          ) {
-                                            responseSent = true;
+                                        // After processing each application, check if all are processed
+                                        if (
+                                          processedApplications + failedApplications ===
+                                          updatedApplications.length &&
+                                          !responseSent
+                                        ) {
+                                          responseSent = true; // Ensure the response is only sent once
 
-                                            if (failedApplications > 0) {
-                                              return res.status(201).json({
-                                                status: false,
-                                                message:
-                                                  "Some emails failed to send. Candidate applications created successfully.",
-                                                token: newToken,
-                                              });
-                                            } else {
-                                              return res.status(201).json({
-                                                status: true,
-                                                message:
-                                                  "Candidate applications created successfully and emails sent.",
-                                                token: newToken,
-                                              });
-                                            }
+                                          if (failedApplications > 0) {
+                                            return res.status(201).json({
+                                              status: false,
+                                              message:
+                                                "Some emails failed to send. Candidate applications created successfully.",
+                                              token: newToken,
+                                            });
+                                          } else {
+                                            return res.status(201).json({
+                                              status: true,
+                                              message:
+                                                "Candidate applications created successfully and emails sent.",
+                                              token: newToken,
+                                            });
                                           }
-                                        });
-                                    }
+                                        }
+                                      });
                                   });
-
                                 });
 
                               });
