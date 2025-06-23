@@ -883,6 +883,10 @@ function sendNotificationEmails(
                                     const shouldSendBoth = hasDigitalAddress && otherServiceIds.length > 0;
                                     const shouldSendCreateOnly = !hasDigitalAddress && otherServiceIds.length > 0;
 
+                                    console.log(`shouldSendDavOnly - `, shouldSendDavOnly);
+                                    console.log(`shouldSendBoth - `, shouldSendBoth);
+                                    console.log(`shouldSendCreateOnly - `, shouldSendCreateOnly);
+
                                     // Send davMail if digital address exists
                                     if (hasDigitalAddress) {
                                       const toCC = [{ name: 'QC Team', email: 'qc@screeningstar.com' }];
