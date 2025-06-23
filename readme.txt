@@ -8,3 +8,10 @@ pm2 save
 pm2 startup
 pm2 list
 pm2 logs screeningstarnode
+
+sudo find /var/www/uploads.screeningstar.co.in/uploads -type f -exec chmod 644 {} \;
+sudo find /var/www/uploads.screeningstar.co.in/uploads -type d -exec chmod 755 {} \;
+
+sudo systemctl daemon-reload
+sudo systemctl start real_time_permissions.service
+sudo systemctl enable real_time_permissions.service
