@@ -246,124 +246,100 @@ exports.create = (req, res) => {
                         const serviceNames = [];
 
                         // Function to fetch service names recursively
-                        const fetchServiceNames = (index = 0) => {
-                          if (index >= serviceIds.length) {
-                            // All service names fetched, now get app info
-                            return AppModel.appInfo("frontend", (err, appInfo) => {
-                              if (err) {
-                                console.error("Database error:", err);
-                                return res.status(500).json({
-                                  status: false,
-                                  message: err.message,
-                                  token: newToken,
-                                });
+                        const fetchServiceNames = async () => {
+                          try {
+                            const serviceNames = [];
+
+                            for (let i = 0; i < serviceIds.length; i++) {
+                              const id = serviceIds[i];
+                              const currentService = await Service.getServiceRequiredDocumentsByServiceIdAsync(id);
+
+                              if (currentService?.title) {
+                                serviceNames.push(`${currentService.title}: ${currentService.description}`);
                               }
+                            }
 
-                              const appHost = appInfo?.host || "www.screeningstar.in";
-                              const base64_app_id = btoa(result.insertId);
-                              const base64_branch_id = btoa(branch_id);
-                              const base64_customer_id = btoa(customer_id);
+                            // Step 2: App Info
+                            const appInfo = await AppModel.appInfoAsync("frontend");
+                            const appHost = appInfo?.host || "www.screeningstar.in";
+                            const base64_app_id = btoa(result.insertId);
+                            const base64_branch_id = btoa(branch_id);
+                            const base64_customer_id = btoa(customer_id);
 
-                              const base64_link_with_ids = `YXBwX2lk=${base64_app_id}&YnJhbmNoX2lk=${base64_branch_id}&Y3VzdG9tZXJfaWQ==${base64_customer_id}`;
+                            const base64_link_with_ids = `YXBwX2lk=${base64_app_id}&YnJhbmNoX2lk=${base64_branch_id}&Y3VzdG9tZXJfaWQ==${base64_customer_id}`;
+                            const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
+                            const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
 
-                              const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
-                              const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
+                            // Step 3: Digital Address Check
+                            const serviceEntry = await Service.digitlAddressServiceAsync();
+                            const hasDigitalAddress = serviceEntry && serviceIds.includes(parseInt(serviceEntry.id, 10));
+                            const digitalAddressID = hasDigitalAddress ? parseInt(serviceEntry.id, 10) : null;
+                            const otherServiceIds = serviceIds.filter(id => id !== digitalAddressID);
 
-                              // Fetch digital address service entry
-                              return Service.digitlAddressService((err, serviceEntry) => {
-                                if (err) {
-                                  console.error("Database error:", err);
-                                  return res.status(500).json({
-                                    status: false,
-                                    message: err.message,
-                                    token: newToken,
-                                  });
-                                }
+                            const shouldSendDavOnly = hasDigitalAddress && otherServiceIds.length === 0;
+                            const shouldSendBoth = hasDigitalAddress && otherServiceIds.length > 0;
+                            const shouldSendCreateOnly = !hasDigitalAddress && otherServiceIds.length > 0;
 
-                                const digitalAddressID = parseInt(serviceEntry?.id || 0, 10);
-                                const hasDigitalService = serviceIds.includes(digitalAddressID);
+                            console.log(`shouldSendDavOnly - `, shouldSendDavOnly);
+                            console.log(`shouldSendBoth - `, shouldSendBoth);
+                            console.log(`shouldSendCreateOnly - `, shouldSendCreateOnly);
 
-                                const sendApplicationEmail = () => {
-                                  return createMail(
-                                    "candidate application",
-                                    "create",
-                                    name,
-                                    currentCustomer.name,
-                                    result.insertId,
-                                    bgv_href,
-                                    serviceNames,
-                                    toArr || [],
-                                    ccArr || []
-                                  )
-                                    .then(() => {
-                                      return res.status(201).json({
-                                        status: true,
-                                        message: "Online Background Verification Form generated successfully.",
-                                        data: {
-                                          candidate: result,
-                                          package,
-                                        },
-                                        token: newToken,
-                                        toArr: toArr || [],
-                                        ccArr: ccArr || [],
-                                      });
-                                    })
-                                    .catch((emailError) => {
-                                      console.error("Error sending application creation email:", emailError);
-                                      return res.status(201).json({
-                                        status: true,
-                                        message: "Online Background Verification Form generated successfully.",
-                                        candidate: result,
-                                        token: newToken,
-                                      });
-                                    });
-                                };
-
-                                if (hasDigitalService) {
-                                  return davMail(
-                                    "candidate application",
-                                    "dav",
-                                    name,
-                                    customer.name,
-                                    dav_href,
-                                    [{ name: name, email: email.trim() }],
-                                    [{ name: "QC Team", email: "qc@screeningstar.com" }]
-                                  )
-                                    .then(() => sendApplicationEmail())
-                                    .catch((emailError) => {
-                                      console.error("Error sending digital address email:", emailError);
-                                      return sendApplicationEmail(); // continue anyway
-                                    });
-                                } else {
-                                  return sendApplicationEmail();
-                                }
+                            // Step 4: Send Emails
+                            if (hasDigitalAddress) {
+                              await davMail(
+                                "candidate application",
+                                "dav",
+                                name,
+                                customer.name,
+                                dav_href,
+                                [{ name: name, email: email.trim() }],
+                                [{ name: "QC Team", email: "qc@screeningstar.com" }]
+                              ).catch((emailError) => {
+                                console.error("Error sending digital address email:", emailError);
+                                // continue anyway
                               });
+                            }
+
+                            if (shouldSendCreateOnly || shouldSendBoth) {
+                              await createMail(
+                                "candidate application",
+                                "create",
+                                name,
+                                currentCustomer.name,
+                                result.insertId,
+                                bgv_href,
+                                serviceNames,
+                                toArr || [],
+                                ccArr || []
+                              );
+                            }
+
+                            // Final Response
+                            return res.status(201).json({
+                              status: true,
+                              message: "Online Background Verification Form generated successfully.",
+                              data: {
+                                candidate: result,
+                                package,
+                              },
+                              token: newToken,
+                              toArr: toArr || [],
+                              ccArr: ccArr || [],
+                            });
+
+                          } catch (err) {
+                            console.error("Error in fetchServiceNames:", err);
+                            return res.status(500).json({
+                              status: false,
+                              message: err.message || "Unexpected error occurred",
+                              token: newToken,
                             });
                           }
-
-                          const id = serviceIds[index];
-
-                          Service.getServiceRequiredDocumentsByServiceId(id, (err, currentService) => {
-                            if (err) {
-                              console.error("Error fetching service data:", err);
-                              return res.status(500).json({
-                                status: false,
-                                message: err.message,
-                                token: newToken,
-                              });
-                            }
-
-                            if (currentService?.title) {
-                              serviceNames.push(`${currentService.title}: ${currentService.description}`);
-                            }
-
-                            // Continue to next service
-                            fetchServiceNames(index + 1);
-                          });
                         };
 
-                        // Start fetching service names
+                        // Start process
                         fetchServiceNames();
+
                       }
                     );
                   });
