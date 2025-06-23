@@ -302,9 +302,44 @@ exports.create = (req, res) => {
                                           toCC
                                         )
                                           .then(() => {
-                                            console.log(
-                                              "Digital address verification mail sent."
-                                            );
+                                            createMail(
+                                              "candidate application",
+                                              "create",
+                                              name,
+                                              currentCustomer.name,
+                                              result.insertId,
+                                              bgv_href,
+                                              serviceNames,
+                                              toArr || [],
+                                              ccArr || []
+                                            )
+                                              .then(() => {
+                                                return res.status(201).json({
+                                                  status: true,
+                                                  message:
+                                                    "Online Background Verification Form generated successfully.",
+                                                  data: {
+                                                    candidate: result,
+                                                    package,
+                                                  },
+                                                  token: newToken,
+                                                  toArr: toArr || [],
+                                                  ccArr: ccArr || [],
+                                                });
+                                              })
+                                              .catch((emailError) => {
+                                                console.error(
+                                                  "Error sending application creation email:",
+                                                  emailError
+                                                );
+                                                return res.status(201).json({
+                                                  status: true,
+                                                  message:
+                                                    "Online Background Verification Form generated successfully.",
+                                                  candidate: result,
+                                                  token: newToken,
+                                                });
+                                              });
                                           })
                                           .catch((emailError) => {
                                             console.error(
@@ -312,53 +347,51 @@ exports.create = (req, res) => {
                                               emailError
                                             );
                                           });
+                                      } else {
+                                        createMail(
+                                          "candidate application",
+                                          "create",
+                                          name,
+                                          currentCustomer.name,
+                                          result.insertId,
+                                          bgv_href,
+                                          serviceNames,
+                                          toArr || [],
+                                          ccArr || []
+                                        )
+                                          .then(() => {
+                                            return res.status(201).json({
+                                              status: true,
+                                              message:
+                                                "Online Background Verification Form generated successfully.",
+                                              data: {
+                                                candidate: result,
+                                                package,
+                                              },
+                                              token: newToken,
+                                              toArr: toArr || [],
+                                              ccArr: ccArr || [],
+                                            });
+                                          })
+                                          .catch((emailError) => {
+                                            console.error(
+                                              "Error sending application creation email:",
+                                              emailError
+                                            );
+                                            return res.status(201).json({
+                                              status: true,
+                                              message:
+                                                "Online Background Verification Form generated successfully.",
+                                              candidate: result,
+                                              token: newToken,
+                                            });
+                                          });
                                       }
                                     }
                                   }
                                 );
-
-                                // Send application creation email
-                                createMail(
-                                  "candidate application",
-                                  "create",
-                                  name,
-                                  currentCustomer.name,
-                                  result.insertId,
-                                  bgv_href,
-                                  serviceNames,
-                                  toArr || [],
-                                  ccArr || []
-                                )
-                                  .then(() => {
-                                    return res.status(201).json({
-                                      status: true,
-                                      message:
-                                        "Online Background Verification Form generated successfully.",
-                                      data: {
-                                        candidate: result,
-                                        package,
-                                      },
-                                      token: newToken,
-                                      toArr: toArr || [],
-                                      ccArr: ccArr || [],
-                                    });
-                                  })
-                                  .catch((emailError) => {
-                                    console.error(
-                                      "Error sending application creation email:",
-                                      emailError
-                                    );
-                                    return res.status(201).json({
-                                      status: true,
-                                      message:
-                                        "Online Background Verification Form generated successfully.",
-                                      candidate: result,
-                                      token: newToken,
-                                    });
-                                  });
                               }
                             });
-                            return;
                           }
 
                           const id = serviceIds[index];
