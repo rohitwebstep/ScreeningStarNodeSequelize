@@ -10,7 +10,7 @@ async function davMail(
   company_name,
   href,
   toArr,
-  toCC
+  ccArr
 ) {
 
   try {
