@@ -49,8 +49,8 @@ const createAttachments = async (attachments_url) => {
 async function davSubmitMail(
     mailModule,
     action,
-    candidate_applicant_name,
-    customer_name,
+    candidate_name,
+    company_name,
     attachments_url,
     toArr,
     ccArr
@@ -91,8 +91,8 @@ async function davSubmitMail(
 
         // Replace placeholders in the email template
         let template = email.template
-            .replace(/{{candidate_applicant_name}}/g, candidate_applicant_name)
-            .replace(/{{customer_name}}/g, customer_name);
+            .replace(/{{candidate_name}}/g, candidate_name)
+            .replace(/{{company_name}}/g, company_name);
 
         // Prepare CC list
         const ccList = ccArr
