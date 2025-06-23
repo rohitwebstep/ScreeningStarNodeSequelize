@@ -875,96 +875,90 @@ function sendNotificationEmails(
                                       });
                                     }
 
-                                    if (serviceEntry) {
-                                      const digitalAddressID = parseInt(
-                                        serviceEntry.id,
-                                        10
-                                      );
-                                      if (serviceIds.includes(digitalAddressID)) {
-                                        const toCC = [
-                                          { name: 'QC Team', email: 'qc@screeningstar.com' }
-                                        ];
+                                    const hasDigitalAddress = serviceEntry && serviceIds.includes(parseInt(serviceEntry.id, 10));
+                                    const digitalAddressID = hasDigitalAddress ? parseInt(serviceEntry.id, 10) : null;
+                                    const otherServiceIds = serviceIds.filter(id => id !== digitalAddressID);
 
-                                        davMail(
-                                          "candidate application",
-                                          "dav",
-                                          app.applicant_full_name,
-                                          customer.name,
-                                          dav_href,
-                                          [
-                                            {
-                                              name: app.applicant_full_name,
-                                              email: app.email_id.trim(),
-                                            },
-                                          ],
-                                          toCC
-                                        )
-                                          .then(() => {
-                                            console.log(
-                                              "Digital address verification mail sent."
-                                            );
-                                          })
-                                          .catch((emailError) => {
-                                            console.error(
-                                              "Error sending digital address email:",
-                                              emailError
-                                            );
-                                            failedApplications++;
-                                          });
-                                      }
+                                    const shouldSendDavOnly = hasDigitalAddress && otherServiceIds.length === 0;
+                                    const shouldSendBoth = hasDigitalAddress && otherServiceIds.length > 0;
+                                    const shouldSendCreateOnly = !hasDigitalAddress && otherServiceIds.length > 0;
+
+                                    // Send davMail if digital address exists
+                                    if (hasDigitalAddress) {
+                                      const toCC = [{ name: 'QC Team', email: 'qc@screeningstar.com' }];
+
+                                      davMail(
+                                        "candidate application",
+                                        "dav",
+                                        app.applicant_full_name,
+                                        customer.name,
+                                        dav_href,
+                                        [
+                                          {
+                                            name: app.applicant_full_name,
+                                            email: app.email_id.trim(),
+                                          },
+                                        ],
+                                        toCC
+                                      )
+                                        .then(() => {
+                                          console.log("Digital address verification mail sent.");
+                                        })
+                                        .catch((emailError) => {
+                                          console.error("Error sending digital address email:", emailError);
+                                          failedApplications++;
+                                        });
                                     }
 
-                                    // Send application creation email
-                                    createMail(
-                                      "candidate application",
-                                      "create",
-                                      app.applicant_full_name,
-                                      currentCustomer.name,
-                                      app.insertId,
-                                      bgv_href,
-                                      serviceNames,
-                                      createMailToArr || [],
-                                      createMailCCArr || []
-                                    )
-                                      .then(() => {
-                                        processedApplications++;
-                                      })
-                                      .catch((emailError) => {
-                                        console.error(
-                                          "Error sending application creation email:",
-                                          emailError
-                                        );
-                                        failedApplications++;
-                                      })
-                                      .finally(() => {
-                                        processedApplications++;
+                                    // Send createMail if other services exist or if dav should not be sent alone
+                                    if (shouldSendBoth || shouldSendCreateOnly) {
+                                      createMail(
+                                        "candidate application",
+                                        "create",
+                                        app.applicant_full_name,
+                                        currentCustomer.name,
+                                        app.insertId,
+                                        bgv_href,
+                                        serviceNames,
+                                        createMailToArr || [],
+                                        createMailCCArr || []
+                                      )
+                                        .then(() => {
+                                          processedApplications++;
+                                        })
+                                        .catch((emailError) => {
+                                          console.error("Error sending application creation email:", emailError);
+                                          failedApplications++;
+                                        })
+                                        .finally(() => {
+                                          processedApplications++;
 
-                                        // After processing each application, check if all are processed
-                                        if (
-                                          processedApplications + failedApplications ===
-                                          updatedApplications.length &&
-                                          !responseSent
-                                        ) {
-                                          responseSent = true; // Ensure the response is only sent once
+                                          if (
+                                            processedApplications + failedApplications === updatedApplications.length &&
+                                            !responseSent
+                                          ) {
+                                            responseSent = true;
 
-                                          if (failedApplications > 0) {
-                                            return res.status(201).json({
-                                              status: false,
-                                              message:
-                                                "Some emails failed to send. Candidate applications created successfully.",
-                                              token: newToken,
-                                            });
-                                          } else {
-                                            return res.status(201).json({
-                                              status: true,
-                                              message:
-                                                "Candidate applications created successfully and emails sent.",
-                                              token: newToken,
-                                            });
+                                            if (failedApplications > 0) {
+                                              return res.status(201).json({
+                                                status: false,
+                                                message:
+                                                  "Some emails failed to send. Candidate applications created successfully.",
+                                                token: newToken,
+                                              });
+                                            } else {
+                                              return res.status(201).json({
+                                                status: true,
+                                                message:
+                                                  "Candidate applications created successfully and emails sent.",
+                                                token: newToken,
+                                              });
+                                            }
                                           }
-                                        }
-                                      });
+                                        });
+                                    }
                                   });
+
                                 });
 
                               });
