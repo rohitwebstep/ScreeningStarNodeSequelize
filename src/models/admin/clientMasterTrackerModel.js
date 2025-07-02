@@ -1772,16 +1772,12 @@ const Customer = {
 
         // Run all ALTER statements sequentially
         const alterPromises = alterQueries.map(
-
           (query) =>
-            new Promise((resolve, reject) => {
-              connection.query(query, (alterErr) => {
-                if (alterErr) {
-                  console.error("Error adding column:", alterErr);
-                  return reject(alterErr);
-                }
-                resolve();
+            new Promise(async (resolve, reject) => {
+              await sequelize.query(query, {
+                type: QueryTypes.RAW,
               });
+              resolve();
             })
         );
 
