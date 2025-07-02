@@ -6,8 +6,12 @@ const UserHistory = require("../../models/admin/userHistoryModel");
 const Common = require("../../models/admin/commonModel");
 const { getClientIpAddress } = require("../../utils/ipAddress");
 
-const { createMail } = require("../../mailer/admin/personal-manager/createMail");
-const { responseMail } = require("../../mailer/admin/personal-manager/responseMail");
+const {
+    createMail,
+} = require("../../mailer/admin/personal-manager/createMail");
+const {
+    responseMail,
+} = require("../../mailer/admin/personal-manager/responseMail");
 
 const fs = require("fs");
 const path = require("path");
@@ -31,11 +35,13 @@ exports.create = (req, res) => {
 
     let missingFields = [];
     if (!ticket_date || ticket_date === "") missingFields.push("Ticket Date");
-    if (!employee_name || employee_name === "") missingFields.push("Employee Name");
+    if (!employee_name || employee_name === "")
+        missingFields.push("Employee Name");
     if (!employee_id || employee_id === "") missingFields.push("Employee ID");
     if (!from_date || from_date === "") missingFields.push("From Date");
     if (!to_date || to_date === "") missingFields.push("To Date");
-    if (!purpose_of_leave || purpose_of_leave === "") missingFields.push("Purpose of Leave");
+    if (!purpose_of_leave || purpose_of_leave === "")
+        missingFields.push("Purpose of Leave");
     if (!admin_id || admin_id === "") missingFields.push("Admin ID");
     if (!_token || _token === "") missingFields.push("Token");
 
@@ -48,16 +54,16 @@ exports.create = (req, res) => {
 
     const photoUrl = photo ? photo : null;
     /*
-    const action = "personal_manager";
-    Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
-        if (!result.status) {
-            // Check the status returned by the authorization function
-            return res.status(403).json({
-                status: false,
-                message: result.message, // Return the message from the authorization function
-            });
-        }
-            */
+      const action = "personal_manager";
+      Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
+          if (!result.status) {
+              // Check the status returned by the authorization function
+              return res.status(403).json({
+                  status: false,
+                  message: result.message, // Return the message from the authorization function
+              });
+          }
+              */
 
     Common.isAdminTokenValid(_token, admin_id, (err, result) => {
         if (err) {
@@ -114,85 +120,90 @@ exports.create = (req, res) => {
                     () => { }
                 );
 
-                PersonalManager.findById(result.insertId, async (err, currentPersonalManager) => {
-                    if (err) {
-                        console.error("Error retrieving Personal Manager:", err);
-                        return res.status(500).json({
-                            status: false,
-                            message: "An internal server error occurred while retrieving the personal manager details. Please try again later."
-                        });
-                    }
-
-                    if (!currentPersonalManager) {
-                        return res.status(404).json({
-                            status: false,
-                            message: "The requested leave record could not be found. Please verify the Personal Manager ID and try again."
-                        });
-                    }
-
-                    const toArr = [
-                        {
-                            name: 'Manjunath',
-                            email: 'manjunath@screeningstar.com',
-                        }, {
-                            name: 'HR',
-                            email: 'hr@screeningstar.com',
+                PersonalManager.findById(
+                    result.insertId,
+                    async (err, currentPersonalManager) => {
+                        if (err) {
+                            console.error("Error retrieving Personal Manager:", err);
+                            return res.status(500).json({
+                                status: false,
+                                message:
+                                    "An internal server error occurred while retrieving the personal manager details. Please try again later.",
+                            });
                         }
-                    ];
 
-                    const toCC = [
-                        { name: 'QC Team', email: 'qc@screeningstar.com' },
-                        { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' },
-                    ];
+                        if (!currentPersonalManager) {
+                            return res.status(404).json({
+                                status: false,
+                                message:
+                                    "The requested leave record could not be found. Please verify the Personal Manager ID and try again.",
+                            });
+                        }
 
-                    // const toCC = [
-                    //     {
-                    //         name: 'Manjunath',
-                    //         email: 'manjunath@screeningstar.com',
-                    //     },{
-                    //         name: 'HR',
-                    //         email: 'hr@screeningstar.com',
-                    //     }
-                    // ];
-                    // Send an email notification
-                    createMail(
-                        "personal manager",
-                        "create",
-                        currentPersonalManager.photo,
-                        currentPersonalManager.ticket_date,
-                        currentPersonalManager.employee_name,
-                        currentPersonalManager.employee_id,
-                        currentPersonalManager.from_date,
-                        currentPersonalManager.to_date,
-                        currentPersonalManager.purpose_of_leave,
-                        currentPersonalManager.remarks,
-                        toArr,
-                        toCC
-                    )
-                        .then(() => {
-                            return res.status(201).json({
-                                status: true,
-                                message:
-                                    "Admin created and email sent successfully.",
-                                token: newToken,
+                        const toArr = [
+                            {
+                                name: "Manjunath",
+                                email: "manjunath@screeningstar.com",
+                            },
+                            {
+                                name: "HR",
+                                email: "hr@screeningstar.com",
+                            },
+                        ];
+
+                        const toCC = [
+                            { name: "QC Team", email: "qc@screeningstar.com" },
+                            { name: "Rohit Webstep", email: "rohitwebstep@gmail.com" },
+                        ];
+
+                        // const toCC = [
+                        //     {
+                        //         name: 'Manjunath',
+                        //         email: 'manjunath@screeningstar.com',
+                        //     },{
+                        //         name: 'HR',
+                        //         email: 'hr@screeningstar.com',
+                        //     }
+                        // ];
+                        // Send an email notification
+                        createMail(
+                            "personal manager",
+                            "create",
+                            currentPersonalManager.photo,
+                            currentPersonalManager.ticket_date,
+                            currentPersonalManager.employee_name,
+                            currentPersonalManager.employee_id,
+                            currentPersonalManager.from_date,
+                            currentPersonalManager.to_date,
+                            currentPersonalManager.purpose_of_leave,
+                            currentPersonalManager.remarks,
+                            toArr,
+                            toCC
+                        )
+                            .then(() => {
+                                return res.status(201).json({
+                                    status: true,
+                                    message: "Admin created and email sent successfully.",
+                                    token: newToken,
+                                });
+                            })
+                            .catch((emailError) => {
+                                console.error("Error sending email:", emailError);
+                                return res.status(201).json({
+                                    status: true,
+                                    message:
+                                        "Admin created successfully, but email sending failed.",
+                                    token: newToken,
+                                });
                             });
-                        })
-                        .catch((emailError) => {
-                            console.error("Error sending email:", emailError);
-                            return res.status(201).json({
-                                status: true,
-                                message:
-                                    "Admin created successfully, but email sending failed.",
-                                token: newToken,
-                            });
-                        });
-                });
+                    }
+                );
             }
         );
     });
     /*
-});
-*/
+  });
+  */
 };
 
 exports.update = (req, res) => {
@@ -212,13 +223,16 @@ exports.update = (req, res) => {
     } = req.body;
 
     let missingFields = [];
-    if (!personal_manager_id || personal_manager_id === "") missingFields.push("Personal Manager ID");
+    if (!personal_manager_id || personal_manager_id === "")
+        missingFields.push("Personal Manager ID");
     if (!ticket_date || ticket_date === "") missingFields.push("Ticket Date");
-    if (!employee_name || employee_name === "") missingFields.push("Employee Name");
+    if (!employee_name || employee_name === "")
+        missingFields.push("Employee Name");
     if (!employee_id || employee_id === "") missingFields.push("Employee ID");
     if (!from_date || from_date === "") missingFields.push("From Date");
     if (!to_date || to_date === "") missingFields.push("To Date");
-    if (!purpose_of_leave || purpose_of_leave === "") missingFields.push("Purpose of Leave");
+    if (!purpose_of_leave || purpose_of_leave === "")
+        missingFields.push("Purpose of Leave");
     if (!admin_id || admin_id === "") missingFields.push("Admin ID");
     if (!_token || _token === "") missingFields.push("Token");
 
@@ -230,16 +244,16 @@ exports.update = (req, res) => {
     }
 
     /*
-    const action = "personal_manager";
-    Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
-        if (!result.status) {
-            // Check the status returned by the authorization function
-            return res.status(403).json({
-                status: false,
-                message: result.message, // Return the message from the authorization function
-            });
-        }
-    */
+      const action = "personal_manager";
+      Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
+          if (!result.status) {
+              // Check the status returned by the authorization function
+              return res.status(403).json({
+                  status: false,
+                  message: result.message, // Return the message from the authorization function
+              });
+          }
+      */
     Common.isAdminTokenValid(_token, admin_id, (err, result) => {
         if (err) {
             console.error("Error checking token validity:", err);
@@ -305,8 +319,8 @@ exports.update = (req, res) => {
         );
     });
     /*
-});
-*/
+  });
+  */
 };
 
 exports.response = (req, res) => {
@@ -323,7 +337,9 @@ exports.response = (req, res) => {
     if (missingFields.length > 0) {
         return res.status(400).json({
             status: false,
-            message: `The following required fields are missing: ${missingFields.join(", ")}. Please provide all necessary details.`,
+            message: `The following required fields are missing: ${missingFields.join(
+                ", "
+            )}. Please provide all necessary details.`,
         });
     }
 
@@ -331,7 +347,8 @@ exports.response = (req, res) => {
     if (status !== 1 && status !== 2) {
         return res.status(400).json({
             status: false,
-            message: "The provided status is invalid. Please ensure the status is either 1 (Approved) or 2 (Rejected).",
+            message:
+                "The provided status is invalid. Please ensure the status is either 1 (Approved) or 2 (Rejected).",
         });
     }
 
@@ -340,147 +357,185 @@ exports.response = (req, res) => {
         if (!result.status) {
             return res.status(403).json({
                 status: false,
-                message: `Access denied`
+                message: `Access denied`,
             });
         }
 
-        PersonalManager.findById(personal_manager_id, async (err, currentPersonalManager) => {
-            if (err) {
-                console.error("Error retrieving Personal Manager:", err);
-                return res.status(500).json({
-                    status: false,
-                    message: "An internal server error occurred while retrieving the personal manager details. Please try again later."
-                });
-            }
-
-            if (!currentPersonalManager) {
-                return res.status(404).json({
-                    status: false,
-                    message: "The requested leave record could not be found. Please verify the Personal Manager ID and try again."
-                });
-            }
-
-            const leaveDate = new Date(currentPersonalManager.from_date);
-            const currentDate = new Date();
-
-            // Compare leave date with current date
-            if (leaveDate <= currentDate) {
-                return res.status(400).json({
-                    status: false,
-                    message: "This leave request is no longer available for response as the specified leave date has already passed or is today.",
-                });
-            }
-
-            Common.isAdminTokenValid(_token, admin_id, (err, result) => {
+        PersonalManager.findById(
+            personal_manager_id,
+            async (err, currentPersonalManager) => {
                 if (err) {
-                    console.error("Error verifying authentication token:", err);
+                    console.error("Error retrieving Personal Manager:", err);
                     return res.status(500).json({
                         status: false,
-                        message: "An error occurred while validating the authentication token. Please try again.",
+                        message:
+                            "An internal server error occurred while retrieving the personal manager details. Please try again later.",
                     });
                 }
 
-                if (!result.status) {
-                    return res.status(401).json({
+                if (!currentPersonalManager) {
+                    return res.status(404).json({
                         status: false,
-                        message: `Authentication failed`
+                        message:
+                            "The requested leave record could not be found. Please verify the Personal Manager ID and try again.",
                     });
                 }
 
-                const newToken = result.newToken;
+                const leaveDate = new Date(currentPersonalManager.from_date);
+                const currentDate = new Date();
 
-                PersonalManager.response(personal_manager_id, status, (err, result) => {
+                // Compare leave date with current date
+                if (leaveDate <= currentDate) {
+                    return res.status(400).json({
+                        status: false,
+                        message:
+                            "This leave request is no longer available for response as the specified leave date has already passed or is today.",
+                    });
+                }
+
+                Common.isAdminTokenValid(_token, admin_id, (err, result) => {
                     if (err) {
-                        console.error("Database error:", err);
-                        Common.adminActivityLog(ipAddress, ipType, admin_id, "Personal Manager", "Response", "0", null, err, () => { });
-
+                        console.error("Error verifying authentication token:", err);
                         return res.status(500).json({
                             status: false,
-                            message: "An error occurred while saving the response. Please try again later.",
-                            token: newToken,
+                            message:
+                                "An error occurred while validating the authentication token. Please try again.",
                         });
                     }
 
-                    Common.adminActivityLog(ipAddress, ipType, admin_id, "Personal Manager", "Response", "1", `{id: ${result.insertId}}`, null, () => { });
+                    if (!result.status) {
+                        return res.status(401).json({
+                            status: false,
+                            message: `Authentication failed`,
+                        });
+                    }
 
+                    const newToken = result.newToken;
 
-                    Admin.findById(currentPersonalManager.admin_id, async (err, currentAdmin) => {
-                        if (err) {
-                            console.error("Error retrieving Admin:", err);
-                            return res.status(500).json({
-                                status: false,
-                                message: "Database error.",
-                                token: newToken,
-                            });
-                        }
+                    PersonalManager.response(
+                        personal_manager_id,
+                        status,
+                        (err, result) => {
+                            if (err) {
+                                console.error("Database error:", err);
+                                Common.adminActivityLog(
+                                    ipAddress,
+                                    ipType,
+                                    admin_id,
+                                    "Personal Manager",
+                                    "Response",
+                                    "0",
+                                    null,
+                                    err,
+                                    () => { }
+                                );
 
-                        if (!currentAdmin) {
-                            return res.status(404).json({
-                                status: false,
-                                message: "Admin not found.",
-                                token: newToken,
-                            });
-                        }
-
-                        const toArr = [
-                            {
-                                name: currentAdmin.name,
-                                email: currentAdmin.email
-                            },
-                        ];
-
-                        // Determine the status message based on the status
-                        let statusMessage = "";
-                        if (status === 1) {
-                            statusMessage = "ACCEPTED";
-                        } else {
-                            statusMessage = "REJECTED";
-                        }
-
-                        const toEmails = [
-                            { name: 'BGV Team', email: 'bgv@screeningstar.com' },
-                            { name: 'Manjunath', email: ' manjunath@screeningstar.com' }
-                        ];
-
-                        const toCC = [
-                            { name: 'QC Team', email: 'qc@screeningstar.com' }
-                        ];
-
-                        // Send an email notification
-                        responseMail(
-                            "personal manager",
-                            "response",
-                            currentPersonalManager.employee_name,
-                            statusMessage,
-                            currentPersonalManager.from_date,
-                            currentPersonalManager.to_date,
-                            currentPersonalManager.purpose_of_leave,
-                            currentPersonalManager.remarks,
-                            toEmails,
-                            toCC
-                        )
-                            .then(() => {
-                                return res.status(201).json({
-                                    status: true,
-                                    message: "Response to the personal manager leave request has been successfully recorded.",
+                                return res.status(500).json({
+                                    status: false,
+                                    message:
+                                        "An error occurred while saving the response. Please try again later.",
                                     token: newToken,
                                 });
-                            })
-                            .catch((emailError) => {
-                                console.error("Error sending email:", emailError);
-                                return res.status(201).json({
-                                    status: true,
-                                    message: "Response to the personal manager leave request has been successfully recorded.",
-                                    token: newToken,
-                                });
-                            });
-                    });
+                            }
+
+                            Common.adminActivityLog(
+                                ipAddress,
+                                ipType,
+                                admin_id,
+                                "Personal Manager",
+                                "Response",
+                                "1",
+                                `{id: ${result.insertId}}`,
+                                null,
+                                () => { }
+                            );
+
+                            Admin.findById(
+                                currentPersonalManager.admin_id,
+                                async (err, currentAdmin) => {
+                                    if (err) {
+                                        console.error("Error retrieving Admin:", err);
+                                        return res.status(500).json({
+                                            status: false,
+                                            message: "Database error.",
+                                            token: newToken,
+                                        });
+                                    }
+
+                                    if (!currentAdmin) {
+                                        return res.status(404).json({
+                                            status: false,
+                                            message: "Admin not found.",
+                                            token: newToken,
+                                        });
+                                    }
+
+                                    const toArr = [
+                                        {
+                                            name: currentAdmin.name,
+                                            email: currentAdmin.email,
+                                        },
+                                    ];
+
+                                    // Determine the status message based on the status
+                                    let statusMessage = "";
+                                    if (status === 1) {
+                                        statusMessage = "ACCEPTED";
+                                    } else {
+                                        statusMessage = "REJECTED";
+                                    }
+
+                                    const toEmails = [
+                                        { name: "BGV Team", email: "bgv@screeningstar.com" },
+                                        {
+                                            name: "Manjunath",
+                                            email: " manjunath@screeningstar.com",
+                                        },
+                                    ];
+
+                                    const toCC = [
+                                        { name: "QC Team", email: "qc@screeningstar.com" },
+                                    ];
+
+                                    // Send an email notification
+                                    responseMail(
+                                        "personal manager",
+                                        "response",
+                                        currentPersonalManager.employee_name,
+                                        statusMessage,
+                                        currentPersonalManager.from_date,
+                                        currentPersonalManager.to_date,
+                                        currentPersonalManager.purpose_of_leave,
+                                        currentPersonalManager.remarks,
+                                        toEmails,
+                                        toCC
+                                    )
+                                        .then(() => {
+                                            return res.status(201).json({
+                                                status: true,
+                                                message:
+                                                    "Response to the personal manager leave request has been successfully recorded.",
+                                                token: newToken,
+                                            });
+                                        })
+                                        .catch((emailError) => {
+                                            console.error("Error sending email:", emailError);
+                                            return res.status(201).json({
+                                                status: true,
+                                                message:
+                                                    "Response to the personal manager leave request has been successfully recorded.",
+                                                token: newToken,
+                                            });
+                                        });
+                                }
+                            );
+                        }
+                    );
                 });
-            });
-        });
+            }
+        );
     });
 };
-
 
 // Controller to list all services
 exports.list = (req, res) => {
@@ -549,6 +604,14 @@ exports.attendanceIndex = (req, res) => {
             message: `Missing required fields: ${missingFields.join(", ")}`,
         });
     }
+
+    let { month, year } = req.query;
+
+    // Default to current month/year if not provided
+    const now = new Date();
+    month = month || (now.getMonth() + 1).toString(); // getMonth() returns 0-based month
+    year = year || now.getFullYear().toString();
+
     const action = "user_history";
     Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
         if (!result.status) {
@@ -572,7 +635,7 @@ exports.attendanceIndex = (req, res) => {
 
             const newToken = result.newToken;
 
-            UserHistory.attendanceIndex((err, result) => {
+            UserHistory.attendanceIndex(month, year, (err, result) => {
                 if (err) {
                     console.error("Database error:", err);
                     return res.status(500).json({
@@ -589,6 +652,8 @@ exports.attendanceIndex = (req, res) => {
                     client_spocs: result,
                     totalResults: result.length,
                     token: newToken,
+                    month,
+                    year,
                 });
             });
         });
@@ -609,15 +674,15 @@ exports.myList = (req, res) => {
         });
     }
     /*
-    const action = "client_overview";
-    Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
-        if (!result.status) {
-            return res.status(403).json({
-                status: false,
-                message: result.message, // Return the message from the authorization function
-            });
-        }
-            */
+      const action = "client_overview";
+      Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
+          if (!result.status) {
+              return res.status(403).json({
+                  status: false,
+                  message: result.message, // Return the message from the authorization function
+              });
+          }
+              */
     Common.isAdminTokenValid(_token, admin_id, (err, result) => {
         if (err) {
             console.error("Error checking token validity:", err);
@@ -648,8 +713,8 @@ exports.myList = (req, res) => {
         });
     });
     /*
-});
-*/
+  });
+  */
 };
 
 exports.upload = async (req, res) => {
@@ -663,12 +728,7 @@ exports.upload = async (req, res) => {
             }
 
             // Destructure required fields from request body
-            const {
-                admin_id: adminId,
-                _token: token,
-                id,
-                send_mail
-            } = req.body;
+            const { admin_id: adminId, _token: token, id, send_mail } = req.body;
 
             // Validate required fields
             const requiredFields = { adminId, token, id };
@@ -713,180 +773,174 @@ exports.upload = async (req, res) => {
                 const action = "admin_access";
                 // Check authorization
                 /*
-                Common.isAdminAuthorizedForAction(
-                    adminId,
-                    action,
-                    async (authResult) => {
-                        if (!authResult.status) {
-                            return res.status(403).json({
-                                status: false,
-                                err: authResult,
-                                message: authResult.message,
-                            });
-                        }
-                            */
+                        Common.isAdminAuthorizedForAction(
+                            adminId,
+                            action,
+                            async (authResult) => {
+                                if (!authResult.status) {
+                                    return res.status(403).json({
+                                        status: false,
+                                        err: authResult,
+                                        message: authResult.message,
+                                    });
+                                }
+                                    */
 
                 // Validate token
-                Common.isAdminTokenValid(
-                    token,
-                    adminId,
-                    async (err, tokenResult) => {
-                        if (err) {
-                            console.error("Token validation error:", err);
-                            return res
-                                .status(500)
-                                .json({ status: false, message: "Internal server error." });
-                        }
+                Common.isAdminTokenValid(token, adminId, async (err, tokenResult) => {
+                    if (err) {
+                        console.error("Token validation error:", err);
+                        return res
+                            .status(500)
+                            .json({ status: false, message: "Internal server error." });
+                    }
 
-                        if (!tokenResult.status) {
-                            return res.status(401).json({
+                    if (!tokenResult.status) {
+                        return res.status(401).json({
+                            status: false,
+                            err: tokenResult,
+                            message: tokenResult.message,
+                        });
+                    }
+
+                    const newToken = tokenResult.newToken;
+                    const targetDirectory = `uploads/personal-manager`;
+
+                    // Create directory for uploads
+                    await fs.promises.mkdir(targetDirectory, { recursive: true });
+
+                    App.appInfo("backend", async (err, appInfo) => {
+                        if (err) {
+                            console.error("Database error:", err);
+                            return res.status(500).json({
                                 status: false,
-                                err: tokenResult,
-                                message: tokenResult.message,
+                                err,
+                                message: err.message,
+                                token: newToken,
                             });
                         }
 
-                        const newToken = tokenResult.newToken;
-                        const targetDirectory = `uploads/personal-manager`;
+                        let imageHost = "www.example.in";
 
-                        // Create directory for uploads
-                        await fs.promises.mkdir(targetDirectory, { recursive: true });
+                        if (appInfo) {
+                            imageHost = appInfo.cloud_host || "www.example.in";
+                        }
 
-                        App.appInfo("backend", async (err, appInfo) => {
-                            if (err) {
-                                console.error("Database error:", err);
+                        const savedImagePaths = [];
+
+                        // Process multiple file uploads
+                        if (req.files.images && req.files.images.length > 0) {
+                            const uploadedImages = await saveImages(
+                                req.files.images,
+                                targetDirectory
+                            );
+                            uploadedImages.forEach((imagePath) => {
+                                savedImagePaths.push(`${imageHost}/${imagePath}`);
+                            });
+                        }
+
+                        // Process single file upload
+                        if (req.files.image && req.files.image.length > 0) {
+                            const uploadedImage = await saveImage(
+                                req.files.image[0],
+                                targetDirectory
+                            );
+                            savedImagePaths.push(`${imageHost}/${uploadedImage}`);
+                        }
+
+                        // Save images and update Admin
+                        PersonalManager.upload(id, savedImagePaths, (success, result) => {
+                            if (!success) {
                                 return res.status(500).json({
                                     status: false,
-                                    err,
-                                    message: err.message,
+                                    message: result || "Error occurred while saving images.",
+                                    token: newToken,
+                                    savedImagePaths,
+                                });
+                            }
+                            if (result && result.affectedRows > 0) {
+                                console.log("sendMail is exist", sendMail);
+                                if (sendMail === 1) {
+                                    const newAttachedDocsString = savedImagePaths
+                                        .map((doc) => `${doc.trim()}`)
+                                        .join(",");
+
+                                    const toArr = [
+                                        {
+                                            name: "Manjunath",
+                                            email: "manjunath@screeningstar.com",
+                                        },
+                                        {
+                                            name: "HR",
+                                            email: "hr@screeningstar.com",
+                                        },
+                                    ];
+
+                                    const toCC = [
+                                        { name: "QC Team", email: "qc@screeningstar.com" },
+                                    ];
+
+                                    // const toCC = [
+                                    //     {
+                                    //         name: 'Manjunath',
+                                    //         email: 'manjunath@screeningstar.com',
+                                    //     },{
+                                    //         name: 'HR',
+                                    //         email: 'hr@screeningstar.com',
+                                    //     }
+                                    // ];
+                                    // Send an email notification
+                                    createMail(
+                                        "personal manager",
+                                        "create",
+                                        currentPersonalManager.photo,
+                                        currentPersonalManager.ticket_date,
+                                        currentPersonalManager.employee_name,
+                                        currentPersonalManager.employee_id,
+                                        currentPersonalManager.from_date,
+                                        currentPersonalManager.to_date,
+                                        currentPersonalManager.purpose_of_leave,
+                                        currentPersonalManager.remarks,
+                                        toArr,
+                                        toCC
+                                    )
+                                        .then(() => {
+                                            return res.status(201).json({
+                                                status: true,
+                                                message: "Admin created and email sent successfully.",
+                                                token: newToken,
+                                            });
+                                        })
+                                        .catch((emailError) => {
+                                            console.error("Error sending email:", emailError);
+                                            return res.status(201).json({
+                                                status: true,
+                                                message:
+                                                    "Admin created successfully, but email sending failed.",
+                                                token: newToken,
+                                            });
+                                        });
+                                } else {
+                                    return res.status(201).json({
+                                        status: true,
+                                        message: "Admin created and email sent successfully.",
+                                        token: newToken,
+                                    });
+                                }
+                            } else {
+                                return res.status(400).json({
+                                    status: false,
+                                    message: "No changes were made. Check Admin ID.",
                                     token: newToken,
                                 });
                             }
-
-                            let imageHost = "www.example.in";
-
-                            if (appInfo) {
-                                imageHost = appInfo.cloud_host || "www.example.in";
-                            }
-
-                            const savedImagePaths = [];
-
-                            // Process multiple file uploads
-                            if (req.files.images && req.files.images.length > 0) {
-                                const uploadedImages = await saveImages(
-                                    req.files.images,
-                                    targetDirectory
-                                );
-                                uploadedImages.forEach((imagePath) => {
-                                    savedImagePaths.push(`${imageHost}/${imagePath}`);
-                                });
-                            }
-
-                            // Process single file upload
-                            if (req.files.image && req.files.image.length > 0) {
-                                const uploadedImage = await saveImage(
-                                    req.files.image[0],
-                                    targetDirectory
-                                );
-                                savedImagePaths.push(`${imageHost}/${uploadedImage}`);
-                            }
-
-                            // Save images and update Admin
-                            PersonalManager.upload(id, savedImagePaths, (success, result) => {
-                                if (!success) {
-                                    return res.status(500).json({
-                                        status: false,
-                                        message:
-                                            result || "Error occurred while saving images.",
-                                        token: newToken,
-                                        savedImagePaths,
-                                    });
-                                }
-                                if (result && result.affectedRows > 0) {
-                                    console.log('sendMail is exist', sendMail)
-                                    if (sendMail === 1) {
-                                        const newAttachedDocsString = savedImagePaths
-                                            .map((doc) => `${doc.trim()}`)
-                                            .join(",");
-
-                                        const toArr = [
-                                            {
-                                                name: 'Manjunath',
-                                                email: 'manjunath@screeningstar.com',
-                                            }, {
-                                                name: 'HR',
-                                                email: 'hr@screeningstar.com',
-                                            }
-                                        ];
-
-                                        const toCC = [
-                                            { name: 'QC Team', email: 'qc@screeningstar.com' }
-                                        ];
-
-                                        // const toCC = [
-                                        //     {
-                                        //         name: 'Manjunath',
-                                        //         email: 'manjunath@screeningstar.com',
-                                        //     },{
-                                        //         name: 'HR',
-                                        //         email: 'hr@screeningstar.com',
-                                        //     }
-                                        // ];
-                                        // Send an email notification
-                                        createMail(
-                                            "personal manager",
-                                            "create",
-                                            currentPersonalManager.photo,
-                                            currentPersonalManager.ticket_date,
-                                            currentPersonalManager.employee_name,
-                                            currentPersonalManager.employee_id,
-                                            currentPersonalManager.from_date,
-                                            currentPersonalManager.to_date,
-                                            currentPersonalManager.purpose_of_leave,
-                                            currentPersonalManager.remarks,
-                                            toArr,
-                                            toCC
-                                        )
-                                            .then(() => {
-                                                return res.status(201).json({
-                                                    status: true,
-                                                    message:
-                                                        "Admin created and email sent successfully.",
-                                                    token: newToken,
-                                                });
-                                            })
-                                            .catch((emailError) => {
-                                                console.error("Error sending email:", emailError);
-                                                return res.status(201).json({
-                                                    status: true,
-                                                    message:
-                                                        "Admin created successfully, but email sending failed.",
-                                                    token: newToken,
-                                                });
-                                            });
-                                    } else {
-                                        return res.status(201).json({
-                                            status: true,
-                                            message:
-                                                "Admin created and email sent successfully.",
-                                            token: newToken,
-                                        });
-                                    }
-                                } else {
-                                    return res.status(400).json({
-                                        status: false,
-                                        message: "No changes were made. Check Admin ID.",
-                                        token: newToken,
-                                    });
-                                }
-                            });
                         });
+                    });
+                });
+                /*
                     }
                 );
-                /*
-            }
-        );
-        */
+                */
             });
         });
     } catch (error) {

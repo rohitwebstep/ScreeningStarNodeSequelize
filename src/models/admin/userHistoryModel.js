@@ -1,5 +1,6 @@
 const { sequelize } = require("../../config/db");
-const { QueryTypes } = require("sequelize"); const moment = require("moment"); // Ensure you have moment.js installed
+const { QueryTypes } = require("sequelize");
+const moment = require("moment"); // Ensure you have moment.js installed
 
 const tatDelay = {
   index: async (callback) => {
@@ -33,7 +34,6 @@ const tatDelay = {
     }
     // Return the processed data
     return callback(null, applicationResults);
-
   },
 
   /*
@@ -187,59 +187,104 @@ const tatDelay = {
   },
   */
 
-  attendanceIndex: async (callback) => {
+  attendanceIndex: async (month, year, callback) => {
     try {
       const breakTableName = "admin_breaks";
       const adminLoginLogsTableName = "admin_login_logs";
 
       console.log("Fetching all admins...");
-      const admins = await sequelize.query(`
+      const admins = await sequelize.query(
+        `
       SELECT id AS admin_id, name AS admin_name, profile_picture, email AS admin_email, mobile AS admin_mobile, emp_id
       FROM admins
-    `, {
-        type: QueryTypes.SELECT,
-      });
+    `,
+        {
+          type: QueryTypes.SELECT,
+        }
+      );
 
       console.log("Fetching all distinct dates...");
-      const datesResult = await sequelize.query(`
+      const datesResult = await sequelize.query(
+        `
       SELECT DISTINCT DATE(created_at) AS date
       FROM ${adminLoginLogsTableName}
+      WHERE MONTH(created_at) = ? AND YEAR(created_at) = ?
       ORDER BY date DESC
-    `, {
-        type: QueryTypes.SELECT,
-      });
-      const distinctDates = datesResult.map(d => d.date);
+    `,
+        {
+          replacements: [month, year],
+          type: QueryTypes.SELECT,
+        }
+      );
+      const distinctDates = datesResult.map((d) => d.date);
 
       console.log("Fetching all distinct break types...");
-      const breakTypesResult = await sequelize.query(`
+      const breakTypesResult = await sequelize.query(
+        `
       SELECT DISTINCT type FROM ${breakTableName}
-    `, { type: QueryTypes.SELECT });
-      const breakTypes = breakTypesResult.map(t => t.type);
+    `,
+        { type: QueryTypes.SELECT }
+      );
+      const breakTypes = breakTypesResult.map((t) => t.type);
 
       console.log("Fetching all login/logout records...");
-      const loginLogoutRecords = await sequelize.query(`
+      const loginLogoutRecords = await sequelize.query(
+        `
       SELECT admin_id, action, created_at, DATE(created_at) AS date
       FROM ${adminLoginLogsTableName}
       WHERE action IN ('login', 'logout')
-    `, { type: QueryTypes.SELECT });
+      AND MONTH(created_at) = ? AND YEAR(created_at) = ?
+    `,
+        {
+          replacements: [month, year],
+          type: QueryTypes.SELECT,
+        }
+      );
 
       console.log("Fetching all break records...");
-      const breakRecords = await sequelize.query(`
+      const breakRecords = await sequelize.query(
+        `
       SELECT admin_id, type, created_at, DATE(created_at) AS date
       FROM ${breakTableName}
-    `, { type: QueryTypes.SELECT });
+      WHERE MONTH(created_at) = ? AND YEAR(created_at) = ?
+    `,
+        {
+          replacements: [month, year],
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      console.log("Fetching leave records...");
+      const leaveRecords = await sequelize.query(
+        `
+  SELECT admin_id, purpose_of_leave, from_date, to_date
+  FROM personal_managers
+  WHERE (MONTH(from_date) = ? AND YEAR(from_date) = ?)
+     OR (MONTH(to_date) = ? AND YEAR(to_date) = ?)
+  `,
+        {
+          replacements: [month, year, month, year],
+          type: QueryTypes.SELECT,
+        }
+      );
 
       console.log("Organizing data...");
       const loginMap = {};
       for (const log of loginLogoutRecords) {
         const key = `${log.admin_id}_${log.date}`;
         loginMap[key] = loginMap[key] || { login: null, logout: null };
-        if (log.action === 'login') {
-          if (!loginMap[key].login || new Date(log.created_at) < new Date(loginMap[key].login)) {
+        if (log.action === "login") {
+          if (
+            !loginMap[key].login ||
+            new Date(log.created_at) < new Date(loginMap[key].login)
+          ) {
             loginMap[key].login = log.created_at;
           }
-        } else if (log.action === 'logout') {
-          if (!loginMap[key].logout || new Date(log.created_at) > new Date(loginMap[key].logout)) {
+        } else if (log.action === "logout") {
+          if (
+            !loginMap[key].logout ||
+            new Date(log.created_at) > new Date(loginMap[key].logout)
+          ) {
             loginMap[key].logout = log.created_at;
           }
         }
@@ -249,9 +294,27 @@ const tatDelay = {
       for (const brk of breakRecords) {
         const key = `${brk.admin_id}_${brk.date}`;
         breakMap[key] = breakMap[key] || {};
-        if (!breakMap[key][brk.type] || new Date(brk.created_at) < new Date(breakMap[key][brk.type])) {
+        if (
+          !breakMap[key][brk.type] ||
+          new Date(brk.created_at) < new Date(breakMap[key][brk.type])
+        ) {
           breakMap[key][brk.type] = brk.created_at;
         }
+      }
+
+      const leaveMap = {};
+      for (const leave of leaveRecords) {
+        leaveMap[leave.admin_id] = leaveMap[leave.admin_id] || [];
+        leaveMap[leave.admin_id].push({
+          purpose_of_leave: leave.purpose_of_leave,
+          from_date: leave.from_date,
+          to_date: leave.to_date,
+        });
+      }
+
+      function isDateInRange(dateStr, from, to) {
+        const date = new Date(dateStr);
+        return new Date(from) <= date && date <= new Date(to);
       }
 
       const finalResult = [];
@@ -266,6 +329,12 @@ const tatDelay = {
             breakTimes[type] = breakData[type] || null;
           }
 
+          // Find leave that covers this date
+          const leaves = leaveMap[admin.admin_id] || [];
+          const leaveForDay = leaves.find((l) =>
+            isDateInRange(date, l.from_date, l.to_date)
+          );
+
           finalResult.push({
             date,
             admin_id: admin.admin_id,
@@ -277,13 +346,15 @@ const tatDelay = {
             first_login_time: logData.login || null,
             last_logout_time: logData.logout || null,
             break_times: breakTimes,
+            purpose_of_leave: leaveForDay ? leaveForDay.purpose_of_leave : null,
+            leave_from_date: leaveForDay ? leaveForDay.from_date : null,
+            leave_to_date: leaveForDay ? leaveForDay.to_date : null,
           });
         }
       }
 
       console.log("Final result compiled. Total entries:", finalResult.length);
       return callback(null, finalResult);
-
     } catch (error) {
       console.error("Error in attendanceIndex:", error);
       return callback(error, null);
@@ -291,7 +362,6 @@ const tatDelay = {
   },
 
   activityList: async (logDate, adminId, callback) => {
-
     const query = `SELECT * FROM \`admin_activity_logs\` WHERE \`admin_id\` = ? AND DATE(created_at) = ?;`;
 
     console.log("Database connection established successfully.");
@@ -300,8 +370,7 @@ const tatDelay = {
       type: QueryTypes.SELECT,
     });
     callback(null, results);
-  }
-
+  },
 };
 
 // Helper function to handle query errors and release connection
