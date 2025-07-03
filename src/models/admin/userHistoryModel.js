@@ -364,7 +364,11 @@ const tatDelay = {
       }
 
       console.log("Final result compiled. Total entries:", finalResult.length);
-      return callback(null, finalResult);
+      return callback(null, {
+        attendance_records: finalResult,
+        leave_summary: leaveMap,
+      });
+
     } catch (error) {
       console.error("Error in attendanceIndex:", error);
       return callback(error, null);

@@ -649,8 +649,14 @@ exports.attendanceIndex = (req, res) => {
                 return res.json({
                     status: true,
                     message: "Admins History fetched successfully",
-                    client_spocs: result,
-                    totalResults: result.length,
+                    data: {
+                        attendance_records: result.attendance_records,
+                        leave_summary: result.leave_summary,
+                    },
+                    totalResults: {
+                        attendance_records: result.attendance_records.length,
+                        leave_summary: result.leave_summary.length,
+                    },
                     token: newToken,
                     month,
                     year,
