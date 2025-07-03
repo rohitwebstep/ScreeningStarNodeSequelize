@@ -329,11 +329,19 @@ const tatDelay = {
             breakTimes[type] = breakData[type] || null;
           }
 
-          // Find leave that covers this date
-          const leaves = leaveMap[admin.admin_id] || [];
-          const leaveForDay = leaves.find((l) =>
-            isDateInRange(date, l.from_date, l.to_date)
-          );
+          // Check if it's a leave day
+          const leaveForDay = leaves.find((l) => isDateInRange(date, l.from_date, l.to_date));
+
+          // ✅ If leave exists AND no login/logout records, consider it a leave day
+          const hasLog = logData.login || logData.logout;
+          const hasBreak = breakMap[key] && Object.keys(breakMap[key]).length > 0;
+
+          // Skip this entry if it's a leave day and logs exist (conflict case)
+          if (leaveForDay && (hasLog || hasBreak)) {
+            // Optionally log conflict
+            console.warn(`⚠️ Leave conflict: Admin ${admin.admin_id} has logs on leave date ${date}`);
+            // continue; // OR handle differently
+          }
 
           finalResult.push({
             date,
