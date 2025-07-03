@@ -259,7 +259,7 @@ const tatDelay = {
         `
   SELECT admin_id, purpose_of_leave, from_date, to_date
   FROM personal_managers
-  WHERE (MONTH(from_date) = ? AND YEAR(from_date) = ?)
+  WHERE status = 1 AND (MONTH(from_date) = ? AND YEAR(from_date) = ?)
      OR (MONTH(to_date) = ? AND YEAR(to_date) = ?)
   `,
         {
