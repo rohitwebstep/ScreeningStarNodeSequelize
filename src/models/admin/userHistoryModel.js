@@ -187,10 +187,14 @@ const tatDelay = {
   },
   */
 
-  attendanceIndex: async (month, year, callback) => {
+  attendanceIndex: async (fromMonth, fromYear, toMonth, toYear, callback) => {
     try {
       const breakTableName = "admin_breaks";
       const adminLoginLogsTableName = "admin_login_logs";
+
+      // Build proper fromDate and toDate
+      const fromDate = new Date(fromYear, fromMonth - 1, 1); // 1st of fromMonth
+      const toDate = new Date(toYear, toMonth, 0); // last day of toMonth
 
       console.log("Fetching all admins...");
       const admins = await sequelize.query(
@@ -206,13 +210,13 @@ const tatDelay = {
       console.log("Fetching all distinct dates...");
       const datesResult = await sequelize.query(
         `
-      SELECT DISTINCT DATE(created_at) AS date
-      FROM ${adminLoginLogsTableName}
-      WHERE MONTH(created_at) = ? AND YEAR(created_at) = ?
-      ORDER BY date DESC
-    `,
+                                                SELECT DISTINCT DATE(created_at) AS date
+                                                FROM ${adminLoginLogsTableName}
+                                                WHERE created_at BETWEEN :fromDate AND :toDate
+                                                ORDER BY date DESC
+                                              `,
         {
-          replacements: [month, year],
+          replacements: { fromDate, toDate },
           type: QueryTypes.SELECT,
         }
       );
@@ -230,13 +234,13 @@ const tatDelay = {
       console.log("Fetching all login/logout records...");
       const loginLogoutRecords = await sequelize.query(
         `
-      SELECT admin_id, action, created_at, DATE(created_at) AS date
-      FROM ${adminLoginLogsTableName}
-      WHERE action IN ('login', 'logout')
-      AND MONTH(created_at) = ? AND YEAR(created_at) = ?
-    `,
+                                                      SELECT admin_id, action, created_at, DATE(created_at) AS date
+                                                      FROM ${adminLoginLogsTableName}
+                                                      WHERE action IN ('login', 'logout')
+                                                      AND created_at BETWEEN :fromDate AND :toDate
+                                                    `,
         {
-          replacements: [month, year],
+          replacements: { fromDate, toDate },
           type: QueryTypes.SELECT,
         }
       );
@@ -244,12 +248,12 @@ const tatDelay = {
       console.log("Fetching all break records...");
       const breakRecords = await sequelize.query(
         `
-      SELECT admin_id, type, created_at, DATE(created_at) AS date
-      FROM ${breakTableName}
-      WHERE MONTH(created_at) = ? AND YEAR(created_at) = ?
-    `,
+                                            SELECT admin_id, type, created_at, DATE(created_at) AS date
+                                            FROM ${breakTableName}
+                                            WHERE created_at BETWEEN :fromDate AND :toDate
+                                          `,
         {
-          replacements: [month, year],
+          replacements: { fromDate, toDate },
           type: QueryTypes.SELECT,
         }
       );
@@ -257,13 +261,17 @@ const tatDelay = {
       console.log("Fetching leave records...");
       const leaveRecords = await sequelize.query(
         `
-  SELECT admin_id, purpose_of_leave, from_date, to_date, remarks
-  FROM personal_managers
-  WHERE status = 1 AND (MONTH(from_date) = ? AND YEAR(from_date) = ?)
-     OR (MONTH(to_date) = ? AND YEAR(to_date) = ?)
-  `,
+                                                SELECT admin_id, purpose_of_leave, from_date, to_date, remarks
+                                                FROM personal_managers
+                                                WHERE status = 1 AND (
+                                                  (from_date BETWEEN :fromDate AND :toDate)
+                                                  OR (to_date BETWEEN :fromDate AND :toDate)
+                                                  OR (:fromDate BETWEEN from_date AND to_date)
+                                                  OR (:toDate BETWEEN from_date AND to_date)
+                                                )
+                                              `,
         {
-          replacements: [month, year, month, year],
+          replacements: { fromDate, toDate },
           type: QueryTypes.SELECT,
         }
       );

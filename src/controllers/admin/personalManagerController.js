@@ -592,11 +592,12 @@ exports.list = (req, res) => {
 };
 
 exports.attendanceIndex = (req, res) => {
-    const { admin_id, _token } = req.query;
+    const { admin_id, _token, from, to } = req.query;
 
+    // Step 1: Validate required fields
     let missingFields = [];
-    if (!admin_id || admin_id === "") missingFields.push("Admin ID");
-    if (!_token || _token === "") missingFields.push("Token");
+    if (!admin_id || admin_id.trim() === "") missingFields.push("Admin ID");
+    if (!_token || _token.trim() === "") missingFields.push("Token");
 
     if (missingFields.length > 0) {
         return res.status(400).json({
@@ -605,12 +606,30 @@ exports.attendanceIndex = (req, res) => {
         });
     }
 
-    let { month, year } = req.query;
+    // Step 2: Parse from and to values
+    const parseMonthYear = (str) => {
+        if (!str || !/^\d{2}\/\d{4}$/.test(str)) return null;
+        const [monthStr, yearStr] = str.split("/");
+        const month = parseInt(monthStr, 10);
+        const year = parseInt(yearStr, 10);
+        if (isNaN(month) || isNaN(year)) return null;
+        return { month, year };
+    };
 
-    // Default to current month/year if not provided
     const now = new Date();
-    month = month || (now.getMonth() + 1).toString(); // getMonth() returns 0-based month
-    year = year || now.getFullYear().toString();
+
+    const fromParsed = parseMonthYear(from) || {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+    };
+
+    const toParsed = parseMonthYear(to) || {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+    };
+
+    const { month: fromMonth, year: fromYear } = fromParsed;
+    const { month: toMonth, year: toYear } = toParsed;
 
     const action = "user_history";
     Common.isAdminAuthorizedForAction(admin_id, action, (result) => {
@@ -618,9 +637,10 @@ exports.attendanceIndex = (req, res) => {
             return res.status(403).json({
                 status: false,
                 err: result,
-                message: result.message, // Return the message from the authorization function
+                message: result.message,
             });
         }
+
         Common.isAdminTokenValid(_token, admin_id, (err, result) => {
             if (err) {
                 console.error("Error checking token validity:", err);
@@ -628,14 +648,16 @@ exports.attendanceIndex = (req, res) => {
             }
 
             if (!result.status) {
-                return res
-                    .status(401)
-                    .json({ status: false, err: result, message: result.message });
+                return res.status(401).json({
+                    status: false,
+                    err: result,
+                    message: result.message,
+                });
             }
 
             const newToken = result.newToken;
 
-            UserHistory.attendanceIndex(month, year, (err, result) => {
+            UserHistory.attendanceIndex(fromMonth, fromYear, toMonth, toYear, (err, result) => {
                 if (err) {
                     console.error("Database error:", err);
                     return res.status(500).json({
@@ -658,8 +680,10 @@ exports.attendanceIndex = (req, res) => {
                         leave_summary: result.leave_summary.length,
                     },
                     token: newToken,
-                    month,
-                    year,
+                    fromMonth,
+                    fromYear,
+                    toMonth,
+                    toYear,
                 });
             });
         });
