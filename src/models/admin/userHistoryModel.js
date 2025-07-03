@@ -319,6 +319,8 @@ const tatDelay = {
 
       const finalResult = [];
       for (const admin of admins) {
+        const leaves = leaveMap[admin.admin_id] || [];
+
         for (const date of distinctDates) {
           const key = `${admin.admin_id}_${date}`;
           const logData = loginMap[key] || {};
