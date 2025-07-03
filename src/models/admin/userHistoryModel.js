@@ -257,7 +257,7 @@ const tatDelay = {
       console.log("Fetching leave records...");
       const leaveRecords = await sequelize.query(
         `
-  SELECT admin_id, purpose_of_leave, from_date, to_date
+  SELECT admin_id, purpose_of_leave, from_date, to_date, remarks
   FROM personal_managers
   WHERE status = 1 AND (MONTH(from_date) = ? AND YEAR(from_date) = ?)
      OR (MONTH(to_date) = ? AND YEAR(to_date) = ?)
@@ -307,6 +307,7 @@ const tatDelay = {
         leaveMap[leave.admin_id] = leaveMap[leave.admin_id] || [];
         leaveMap[leave.admin_id].push({
           purpose_of_leave: leave.purpose_of_leave,
+          remarks: leave.remarks,
           from_date: leave.from_date,
           to_date: leave.to_date,
         });
