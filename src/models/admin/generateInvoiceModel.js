@@ -56,17 +56,20 @@ const generateInvoiceModel = {
 
       // Fetch service titles
       for (const group of servicesData) {
-        const serviceSql = `SELECT title FROM services WHERE id = ?`;
-        const [serviceResult] = await sequelize.query(serviceSql, {
-          replacements: [group.serviceId],
-          type: QueryTypes.SELECT,
-        });
+        for (const service of group.services) {
+          const serviceSql = `SELECT title FROM services WHERE id = ?`;
+          const [serviceResult] = await sequelize.query(serviceSql, {
+            replacements: [service.serviceId],
+            type: QueryTypes.SELECT,
+          });
 
-        if (serviceResult) {
-          group.serviceTitle = serviceResult.title;
-          console.log(`[STEP] Service title added for serviceId ${group.serviceId}:`, serviceResult.title);
+          if (serviceResult) {
+            service.serviceTitle = serviceResult.title;
+            console.log(`[STEP] Service title added for serviceId ${group.serviceId}:`, serviceResult.title);
+          }
         }
       }
+
       customerData.services = JSON.stringify(servicesData);
 
       // Fetch completed applications
