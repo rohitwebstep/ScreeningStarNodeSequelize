@@ -2,41 +2,44 @@ const crypto = require("crypto");
 const { sequelize } = require("../../config/db");
 const { QueryTypes } = require("sequelize");
 
-// Function to hash passwords using MD5
 const hashPassword = (password) =>
   crypto.createHash("md5").update(password).digest("hex");
 
 const generateInvoiceModel = {
   generateInvoice: async (customerId, month, year, callback) => {
     try {
+      console.log("[STEP] Start generating invoice for:", { customerId, month, year });
+
       // Fetch customer details
       const customerQuery = `
-          SELECT 
-            c.id, 
-            c.client_unique_id, 
-            c.name, 
-            c.emails, 
-            c.mobile, 
-            c.services, 
-            cm.address, 
-            cm.contact_person_name, 
-            cm.escalation_point_contact, 
-            cm.single_point_of_contact, 
-            cm.gst_number,
-            cm.payment_contact_person,
-            cm.state,
-            cm.state_code
-          FROM customers c
-          LEFT JOIN customer_metas cm ON cm.customer_id = c.id
-          WHERE c.id = ? AND c.is_deleted != 1;
-        `;
+        SELECT 
+          c.id, 
+          c.client_unique_id, 
+          c.name, 
+          c.emails, 
+          c.mobile, 
+          c.services, 
+          cm.address, 
+          cm.contact_person_name, 
+          cm.escalation_point_contact, 
+          cm.single_point_of_contact, 
+          cm.gst_number,
+          cm.payment_contact_person,
+          cm.state,
+          cm.state_code
+        FROM customers c
+        LEFT JOIN customer_metas cm ON cm.customer_id = c.id
+        WHERE c.id = ? AND c.is_deleted != 1;
+      `;
 
       const customerResults = await sequelize.query(customerQuery, {
         replacements: [customerId],
         type: QueryTypes.SELECT,
       });
+      console.log("[STEP] Customer details fetched:", customerResults);
 
       if (!customerResults.length) {
+        console.error("[ERROR] Customer not found");
         return callback(new Error("Customer not found."), null);
       }
 
@@ -45,7 +48,9 @@ const generateInvoiceModel = {
 
       try {
         servicesData = JSON.parse(customerData.services);
+        console.log("[STEP] Parsed services:", servicesData);
       } catch (parseError) {
+        console.error("[ERROR] Failed to parse services:", parseError);
         return callback(parseError, null);
       }
 
@@ -59,43 +64,44 @@ const generateInvoiceModel = {
 
         if (serviceResult) {
           group.serviceTitle = serviceResult.title;
+          console.log(`[STEP] Service title added for serviceId ${group.serviceId}:`, serviceResult.title);
         }
       }
       customerData.services = JSON.stringify(servicesData);
 
-      // Fetch completed applications for the customer
+      // Fetch completed applications
       const applicationQuery = `
-             SELECT
-              ca.id,
-              ca.branch_id,
-              ca.application_id,
-              ca.employee_id,
-              ca.name,
-              ca.services,
-              ca.status,
-              ca.created_at,
-              ca.check_id,
-              ca.ticket_id,
-              cmt.report_date
-            FROM 
-              client_applications ca
-            LEFT JOIN 
-              cmt_applications cmt ON cmt.client_application_id = ca.id
-            WHERE 
-              (ca.status = 'completed' OR ca.status = 'closed') 
-              AND ca.customer_id = ?
-              AND MONTH(cmt.report_date) = ?
-              AND YEAR(cmt.report_date) = ? 
-              AND ca.is_deleted != 1
-            ORDER BY ca.branch_id;
-            `;
+        SELECT
+          ca.id,
+          ca.branch_id,
+          ca.application_id,
+          ca.employee_id,
+          ca.name,
+          ca.services,
+          ca.status,
+          ca.created_at,
+          ca.check_id,
+          ca.ticket_id,
+          cmt.report_date
+        FROM 
+          client_applications ca
+        LEFT JOIN 
+          cmt_applications cmt ON cmt.client_application_id = ca.id
+        WHERE 
+          (ca.status = 'completed' OR ca.status = 'closed') 
+          AND ca.customer_id = ?
+          AND MONTH(cmt.report_date) = ?
+          AND YEAR(cmt.report_date) = ? 
+          AND ca.is_deleted != 1
+        ORDER BY ca.branch_id;
+      `;
 
       const applicationResults = await sequelize.query(applicationQuery, {
         replacements: [customerId, month, year],
         type: QueryTypes.SELECT,
       });
+      console.log("[STEP] Applications fetched:", applicationResults.length);
 
-      // Group applications by branch
       const branchApplicationsMap = {};
       applicationResults.forEach((application) => {
         const branchId = application.branch_id;
@@ -106,10 +112,10 @@ const generateInvoiceModel = {
         branchApplicationsMap[branchId].applications.push(application);
       });
 
-      // Fetch branch details
       const branchIds = Object.keys(branchApplicationsMap);
-      const branchesWithApplications = [];
+      console.log("[STEP] Branch IDs found:", branchIds);
 
+      const branchesWithApplications = [];
       for (const branchId of branchIds) {
         const branchQuery = `SELECT id, name FROM branches WHERE id = ?;`;
         const branchResults = await sequelize.query(branchQuery, {
@@ -124,6 +130,7 @@ const generateInvoiceModel = {
             name: branch.name,
             applications: branchApplicationsMap[branchId].applications,
           });
+          console.log(`[STEP] Branch info added for ID ${branchId}:`, branch.name);
         }
       }
 
@@ -140,16 +147,17 @@ const generateInvoiceModel = {
           if (reportFormResults.length > 0) {
             const reportFormJson = JSON.parse(reportFormResults[0].json);
             const dbTable = reportFormJson.db_table;
+            console.log(`[STEP] Processing serviceId ${serviceId} using table ${dbTable}`);
 
-            // Find the additional_fee column
             const additionalFeeColumnQuery = `SHOW COLUMNS FROM \`${dbTable}\` WHERE \`Field\` LIKE 'additional_fee%'`;
             const columnResults = await sequelize.query(additionalFeeColumnQuery, {
               type: QueryTypes.SELECT,
             });
 
-            const additionalFeeColumn = columnResults.length
-              ? columnResults[0].Field
-              : null;
+            const additionalFeeColumn = columnResults.length ? columnResults[0].Field : null;
+            if (additionalFeeColumn) {
+              console.log(`[STEP] Found additional fee column: ${additionalFeeColumn}`);
+            }
 
             const completeStatusGroups = [
               "completed",
@@ -160,53 +168,47 @@ const generateInvoiceModel = {
               "completed_orange",
             ];
 
-            /*
             const statusQuery = `
               SELECT status${additionalFeeColumn ? `, ${additionalFeeColumn}` : ""}
               FROM ${dbTable}
-              WHERE client_application_id = ? 
-              AND is_billed != 1 
-              AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
+              WHERE client_application_id = ?
+                AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
             `;
-            */
-
-            const statusQuery = `
-  SELECT status${additionalFeeColumn ? `, ${additionalFeeColumn}` : ""}
-  FROM ${dbTable}
-  WHERE client_application_id = ?
-    AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
-`;
 
             const statusResults = await sequelize.query(statusQuery, {
               replacements: [application.id, ...completeStatusGroups],
               type: QueryTypes.SELECT,
             });
 
-            if (completeStatusGroups.includes(statusResults[0]?.status)) {
+            if (statusResults.length && completeStatusGroups.includes(statusResults[0].status)) {
               application.statusDetails.push({
                 serviceId,
                 status: statusResults[0]?.status || null,
                 additionalFee: additionalFeeColumn ? statusResults[0]?.[additionalFeeColumn] : null,
               });
+              console.log(`[STEP] Status added to application ${application.id} for serviceId ${serviceId}:`, statusResults[0]);
             }
           }
         }
       }
 
-      // Remove applications with no status details
+      // Remove applications with no statusDetails
       branchesWithApplications.forEach((branch) => {
+        const originalLength = branch.applications.length;
         branch.applications = branch.applications.filter((app) => app.statusDetails.length > 0);
+        const filteredLength = branch.applications.length;
+        console.log(`[STEP] Branch ${branch.name} - filtered ${originalLength - filteredLength} applications`);
       });
 
-      // Final response
       const finalResults = {
         customerInfo: customerData,
         applicationsByBranch: branchesWithApplications,
       };
 
+      console.log("[STEP] Final invoice structure prepared");
       callback(null, finalResults);
     } catch (err) {
-      console.error("Error generating invoice:", err);
+      console.error("[ERROR] Error generating invoice:", err);
       callback(err, null);
     }
   },
