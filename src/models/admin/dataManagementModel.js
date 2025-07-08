@@ -450,6 +450,24 @@ const Customer = {
             async ([dbTable, fileInputNames]) => {
               if (!fileInputNames.length) return;
 
+              // Check if table exists using raw query
+              const tableCheckQuery = `
+                                      SELECT COUNT(*) AS count 
+                                      FROM information_schema.tables 
+                                      WHERE table_schema = DATABASE() 
+                                        AND table_name = :dbTable
+                                    `;
+
+              const [tableCheckResult] = await sequelize.query(tableCheckQuery, {
+                replacements: { dbTable },
+                type: QueryTypes.SELECT,
+              });
+
+              if (tableCheckResult.count === 0) {
+                console.warn(`Table '${dbTable}' does not exist. Skipping.`);
+                return;
+              }
+
               const existingColumns = await new Promise(async (resolve, reject) => {
                 const describeQuery = `DESCRIBE ${dbTable}`;
                 const rows = await sequelize.query(describeQuery, {
