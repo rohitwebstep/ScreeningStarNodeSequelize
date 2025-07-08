@@ -216,7 +216,15 @@ exports.create = (req, res) => {
                         // Prepare recipient and CC lists
 
                         let toArr = [{ name, email }];
-                        let ccArr = [{ name: 'QC Team', email: 'qc@screeningstar.com' }, { name: 'BGV Team', email: 'bgv@screeningstar.com' }, { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' }];
+                        let ccArr = [{ name: 'QC Team', email: 'qc@screeningstar.com' }, { name: 'BGV Team', email: 'bgv@screeningstar.com' }];
+
+                        // Append parsed customer emails to existing ccArr
+                        const newEmails = JSON.parse(customer.emails).map((email) => ({
+                          name: customer.name,
+                          email: email.trim(),
+                        }));
+
+                        ccArr.push(...newEmails);
 
                         // If valid emails are found, push them into the toArr
                         if (dedicatedClientSpocEmails && dedicatedClientSpocEmails.length > 0) {
@@ -864,51 +872,35 @@ function sendNotificationEmails(
 
                           if (appInfo) {
 
-                            Customer.getDedicatedPointOfContact(
-                              customer_id,
-                              (err, dedicatedClientSpocEmails) => {
-                                if (err) {
-                                  console.error("Error getting dedicted client spoc emails:", err);
+                            BranchCommon.getBranchandCustomerEmailsForNotification(
+                              branch_id,
+                              (emailError, emailData) => {
+                                if (emailError) {
+                                  console.error("Error fetching emails:", emailError);
                                   return res.status(500).json({
                                     status: false,
-                                    message: err.message,
+                                    message: "Failed to retrieve email addresses.",
                                     token: newToken,
                                   });
                                 }
 
-                                const appHost = appInfo.host || "www.screeningstar.in";
+                                const { branch, customer } = emailData;
 
-                                // Initialize counters for tracking email success/failure
-                                let processedApplications = 0;
-                                let failedApplications = 0;
-                                let responseSent = false; // Flag to track if the response is already sent
+                                let createMailCCArr = [{ name: 'QC Team', email: 'qc@screeningstar.com' }, { name: 'BGV Team', email: 'bgv@screeningstar.com' }];
 
-                                updatedApplications.forEach((app) => {
-                                  const base64_app_id = btoa(app.insertId);
-                                  const base64_branch_id = btoa(branch_id);
-                                  const base64_customer_id = btoa(customer_id);
-                                  const base64_link_with_ids = `YXBwX2lk=${base64_app_id}&YnJhbmNoX2lk=${base64_branch_id}&Y3VzdG9tZXJfaWQ=${base64_customer_id}`;
+                                // Append parsed customer emails to existing createMailCCArr
+                                const newEmails = JSON.parse(customer.emails).map((email) => ({
+                                  name: customer.name,
+                                  email: email.trim(),
+                                }));
 
-                                  const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
-                                  const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
+                                createMailCCArr.push(...newEmails);
 
-                                  let createMailToArr = [
-                                    { name: app.applicant_full_name, email: app.email_id },
-                                  ];
-
-                                  // If valid emails are found, push them into the toArr
-                                  if (dedicatedClientSpocEmails && dedicatedClientSpocEmails.length > 0) {
-                                    dedicatedClientSpocEmails.forEach(email => {
-                                      createMailToArr.push({ name: "Dedicated Client Spoc", email: email });
-                                    });
-                                  }
-
-                                  let createMailCCArr = [{ name: 'QC Team', email: 'qc@screeningstar.com' }, { name: 'BGV Team', email: 'bgv@screeningstar.com' }];
-
-                                  // Fetch and process digital address service for DAV mail
-                                  Service.digitlAddressService((err, serviceEntry) => {
+                                Customer.getDedicatedPointOfContact(
+                                  customer_id,
+                                  (err, dedicatedClientSpocEmails) => {
                                     if (err) {
-                                      console.error("Database error:", err);
+                                      console.error("Error getting dedicted client spoc emails:", err);
                                       return res.status(500).json({
                                         status: false,
                                         message: err.message,
@@ -916,98 +908,137 @@ function sendNotificationEmails(
                                       });
                                     }
 
-                                    if (serviceEntry) {
-                                      const digitalAddressID = parseInt(
-                                        serviceEntry.id,
-                                        10
-                                      );
-                                      if (serviceIds.includes(digitalAddressID)) {
-                                        const toCC = [
-                                          { name: 'QC Team', email: 'qc@screeningstar.com' }
-                                        ];
+                                    const appHost = appInfo.host || "www.screeningstar.in";
 
-                                        davMail(
+                                    // Initialize counters for tracking email success/failure
+                                    let processedApplications = 0;
+                                    let failedApplications = 0;
+                                    let responseSent = false; // Flag to track if the response is already sent
+
+                                    updatedApplications.forEach((app) => {
+                                      const base64_app_id = btoa(app.insertId);
+                                      const base64_branch_id = btoa(branch_id);
+                                      const base64_customer_id = btoa(customer_id);
+                                      const base64_link_with_ids = `YXBwX2lk=${base64_app_id}&YnJhbmNoX2lk=${base64_branch_id}&Y3VzdG9tZXJfaWQ=${base64_customer_id}`;
+
+                                      const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
+                                      const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
+
+                                      let createMailToArr = [
+                                        { name: app.applicant_full_name, email: app.email_id },
+                                      ];
+
+                                      // If valid emails are found, push them into the toArr
+                                      if (dedicatedClientSpocEmails && dedicatedClientSpocEmails.length > 0) {
+                                        dedicatedClientSpocEmails.forEach(email => {
+                                          createMailToArr.push({ name: "Dedicated Client Spoc", email: email });
+                                        });
+                                      }
+
+                                      // Fetch and process digital address service for DAV mail
+                                      Service.digitlAddressService((err, serviceEntry) => {
+                                        if (err) {
+                                          console.error("Database error:", err);
+                                          return res.status(500).json({
+                                            status: false,
+                                            message: err.message,
+                                            token: newToken,
+                                          });
+                                        }
+
+                                        if (serviceEntry) {
+                                          const digitalAddressID = parseInt(
+                                            serviceEntry.id,
+                                            10
+                                          );
+                                          if (serviceIds.includes(digitalAddressID)) {
+                                            const toCC = [
+                                              { name: 'QC Team', email: 'qc@screeningstar.com' }
+                                            ];
+
+                                            davMail(
+                                              "candidate application",
+                                              "dav",
+                                              app.applicant_full_name,
+                                              customer.name,
+                                              dav_href,
+                                              [
+                                                {
+                                                  name: app.applicant_full_name,
+                                                  email: app.email_id.trim(),
+                                                },
+                                              ],
+                                              toCC
+                                            )
+                                              .then(() => {
+                                                console.log(
+                                                  "Digital address verification mail sent."
+                                                );
+                                              })
+                                              .catch((emailError) => {
+                                                console.error(
+                                                  "Error sending digital address email:",
+                                                  emailError
+                                                );
+                                                failedApplications++;
+                                              });
+                                          }
+                                        }
+
+                                        // Send application creation email
+                                        createMail(
                                           "candidate application",
-                                          "dav",
+                                          "create",
                                           app.applicant_full_name,
-                                          customer.name,
-                                          dav_href,
-                                          [
-                                            {
-                                              name: app.applicant_full_name,
-                                              email: app.email_id.trim(),
-                                            },
-                                          ],
-                                          toCC
+                                          currentCustomer.name,
+                                          app.insertId,
+                                          bgv_href,
+                                          serviceNames,
+                                          createMailToArr || [],
+                                          createMailCCArr || []
                                         )
                                           .then(() => {
-                                            console.log(
-                                              "Digital address verification mail sent."
-                                            );
+                                            processedApplications++;
                                           })
                                           .catch((emailError) => {
                                             console.error(
-                                              "Error sending digital address email:",
+                                              "Error sending application creation email:",
                                               emailError
                                             );
                                             failedApplications++;
+                                          })
+                                          .finally(() => {
+                                            processedApplications++;
+
+                                            // After processing each application, check if all are processed
+                                            if (
+                                              processedApplications + failedApplications ===
+                                              updatedApplications.length &&
+                                              !responseSent
+                                            ) {
+                                              responseSent = true; // Ensure the response is only sent once
+
+                                              if (failedApplications > 0) {
+                                                return res.status(201).json({
+                                                  status: false,
+                                                  message:
+                                                    "Some emails failed to send. Candidate applications created successfully.",
+                                                  token: newToken,
+                                                });
+                                              } else {
+                                                return res.status(201).json({
+                                                  status: true,
+                                                  message:
+                                                    "Candidate applications created successfully and emails sent.",
+                                                  token: newToken,
+                                                });
+                                              }
+                                            }
                                           });
-                                      }
-                                    }
-
-                                    // Send application creation email
-                                    createMail(
-                                      "candidate application",
-                                      "create",
-                                      app.applicant_full_name,
-                                      currentCustomer.name,
-                                      app.insertId,
-                                      bgv_href,
-                                      serviceNames,
-                                      createMailToArr || [],
-                                      createMailCCArr || []
-                                    )
-                                      .then(() => {
-                                        processedApplications++;
-                                      })
-                                      .catch((emailError) => {
-                                        console.error(
-                                          "Error sending application creation email:",
-                                          emailError
-                                        );
-                                        failedApplications++;
-                                      })
-                                      .finally(() => {
-                                        processedApplications++;
-
-                                        // After processing each application, check if all are processed
-                                        if (
-                                          processedApplications + failedApplications ===
-                                          updatedApplications.length &&
-                                          !responseSent
-                                        ) {
-                                          responseSent = true; // Ensure the response is only sent once
-
-                                          if (failedApplications > 0) {
-                                            return res.status(201).json({
-                                              status: false,
-                                              message:
-                                                "Some emails failed to send. Candidate applications created successfully.",
-                                              token: newToken,
-                                            });
-                                          } else {
-                                            return res.status(201).json({
-                                              status: true,
-                                              message:
-                                                "Candidate applications created successfully and emails sent.",
-                                              token: newToken,
-                                            });
-                                          }
-                                        }
                                       });
-                                  });
-                                });
+                                    });
 
+                                  });
                               });
                           }
                         });
