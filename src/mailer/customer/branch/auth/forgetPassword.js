@@ -99,7 +99,7 @@ async function forgetPassword(mailModule, action, branch_name, reset_link, toArr
       from: `"${smtp.title}" <${smtp.username}>`,
       to: toList,
       cc: ccList, // CC recipient list
-      bcc: `"Rohit Webstep" <rohitwebstep@gmail.com>`,
+      // bcc: `"Rohit Webstep" <rohitwebstep@gmail.com>`,
       subject: email.title,
       html: template,
     });
