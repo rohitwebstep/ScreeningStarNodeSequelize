@@ -45,6 +45,23 @@ const createAttachments = async (attachments_url) => {
   return attachments;
 };
 
+const formatDate = (dateStr) => {
+    if (!dateStr || dateStr.trim() === '') {
+        return 'NOT APPLICABLE';
+    }
+
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+        return dateStr; // Return the original if it's not a valid date
+    }
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}-${month}-${year}`;
+};
+
 // Function to send email
 async function finalReportMail(
   mailModule,
@@ -107,8 +124,8 @@ async function finalReportMail(
       .replace(/{{client_name}}/g, client_name)
       .replace(/{{company_name}}/g, company_name)
       .replace(/{{gender_title}}/g, gender_title)
-      .replace(/{{case_initiated_date}}/g, case_initiated_date)
-      .replace(/{{final_report_date}}/g, final_report_date)
+      .replace(/{{case_initiated_date}}/g, formatDate(case_initiated_date))
+      .replace(/{{final_report_date}}/g, formatDate(final_report_date))
       .replace(/{{report_type}}/g, report_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
       .replace(/{{overall_status}}/g, overall_status.toUpperCase())
       .replace(/{{final_verification_status}}/g, final_verification_status.toUpperCase());
