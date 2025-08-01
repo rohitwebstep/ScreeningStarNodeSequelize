@@ -868,6 +868,7 @@ const Customer = {
           ca.is_highlight, 
           cmt.first_insufficiency_marks,
           cmt.first_insuff_date,
+          cmt.generate_report_type,
           cm.custom_logo,
           cm.custom_template,
           cm.custom_address,
