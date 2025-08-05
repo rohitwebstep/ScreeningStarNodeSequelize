@@ -1,6 +1,9 @@
 const tatDelay = require("../../models/admin/tatDelayModel");
 const Common = require("../../models/admin/commonModel");
 const AdminCommon = require("../../models/admin/commonModel");
+const {
+  tatDelayMail,
+} = require("../../mailer/admin/tatDelayMail");
 const { getClientIpAddress } = require("../../utils/ipAddress");
 
 // Controller to list all tatDelays
@@ -54,6 +57,90 @@ exports.list = (req, res) => {
         });
       });
     });
+  });
+};
+
+exports.sendAutoNotification = (req, res) => {
+  // console.log("🔄 sendAutoNotification triggered");
+
+  tatDelay.list((err, result) => {
+    // console.log("📞 tatDelay.list called");
+
+    if (err) {
+      console.error("❌ Database error:", err);
+      return res.status(500).json({
+        status: false,
+        message: err.message,
+        token: newToken, // Ensure newToken is defined somewhere
+      });
+    }
+
+    // console.log("✅ tatDelay.list success:", result);
+
+    if (result && result.applicationHierarchy.length === 0) {
+      // console.log("📭 No applications out of TAT");
+      return res.status(200).json({
+        status: true,
+        message: "No applications out of TAT.",
+      });
+    }
+
+    // console.log("📦 Applications found out of TAT");
+    const applicationHierarchy = result.applicationHierarchy;
+
+    // console.log("🔧 Setting admin details");
+    const toArr = [
+      {
+        name: "qc@screeningstar.com",
+        email: "QC Team",
+      }
+    ];
+
+    const ccArr = [
+      {
+        name: "bgv@screeningstar.com",
+        email: "BGV Team",
+      },
+      {
+        name: "screeningstarbackup@gmail.com",
+        email: "ScreeningStar Backup",
+      }
+    ];
+
+    const toEmails = toArr.map((admin) => ({
+      name: admin.name,
+      email: admin.email,
+    }));
+
+    const ccEmails = ccArr.map((admin) => ({
+      name: admin.name,
+      email: admin.email,
+    }));
+
+    // console.log("📧 Admin emails prepared:", adminEmails);
+
+    // console.log("📤 Sending TAT delay notification email...");
+    tatDelayMail(
+      "tat-delay-notification",
+      "email",
+      applicationHierarchy,
+      toEmails,
+      ccEmails
+    )
+      .then(() => {
+        // console.log("✅ TAT Delay notification email sent successfully.");
+        res.status(200).json({
+          status: true,
+          message: "TAT Delay notification email sent.",
+        });
+      })
+      .catch((emailError) => {
+        console.error("❌ Error sending email:", emailError);
+        return res.status(200).json({
+          status: true,
+          message: "Failed to send mail.",
+        });
+      });
   });
 };
 
@@ -181,7 +268,7 @@ exports.delete = (req, res) => {
             "0",
             JSON.stringify({ customer_id }),
             err.message,
-            () => {}
+            () => { }
           );
           return res.status(500).json({
             status: false,
@@ -201,7 +288,7 @@ exports.delete = (req, res) => {
           "1",
           JSON.stringify({ customer_id }),
           null,
-          () => {}
+          () => { }
         );
 
         return res.status(200).json({
@@ -281,7 +368,7 @@ exports.deleteApplication = (req, res) => {
             "0",
             JSON.stringify({ customer_id }),
             err.message,
-            () => {}
+            () => { }
           );
           return res.status(500).json({
             status: false,
@@ -301,7 +388,7 @@ exports.deleteApplication = (req, res) => {
           "1",
           JSON.stringify({ customer_id }),
           null,
-          () => {}
+          () => { }
         );
 
         return res.status(200).json({
