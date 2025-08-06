@@ -901,8 +901,7 @@ module.exports = {
                                                             ]
                                                         ],
                                                         body: servicesData
-                                                            .filter(service => service?.annexureData?.status) // Filter out rows with no status
-                                                            .slice(0, 10)
+                                                            .filter(service => service?.annexureData?.status)
                                                             .map(service => {
                                                                 const colorMapping = {
                                                                     Yellow: 'yellow',
@@ -1027,7 +1026,7 @@ module.exports = {
                                                         tableLineWidth: 0.2,
                                                         font: "TimesNewRoman",
                                                         textColor: [0, 0, 0],
-                                                        margin: { left: 10, right: 10 },
+                                                        margin: { left: 10, right: 10, bottom: 25 },
                                                         tableWidth: 'auto',
                                                         columnStyles: {
                                                             0: { cellWidth: 'auto', halign: 'center' },
@@ -1038,181 +1037,6 @@ module.exports = {
                                                     });
 
 
-
-
-
-                                                    const remainingServices = servicesData
-                                                        .filter(service => service?.annexureData?.status) // Filter out rows with no status value
-                                                        .slice(10); // Get the remaining services (from 11 onwards)
-
-                                                    if (remainingServices.length > 0) {
-                                                        // console.log('remainingServices', remainingServices)
-                                                        doc.autoTable({
-                                                            head: [
-                                                                [
-                                                                    {
-                                                                        content: 'SCOPE OF SERVICES / COMPONENT',
-                                                                        styles: {
-                                                                            font: "TimesNewRoman",
-                                                                            halign: 'center',
-                                                                            valign: 'middle',
-                                                                            fontStyle: 'bold',
-                                                                            whiteSpace: 'nowrap',
-                                                                            cellWidth: 'auto'
-                                                                        }
-                                                                    },
-                                                                    {
-                                                                        content: 'INFORMATION VERIFIED BY',
-                                                                        styles: {
-                                                                            font: "TimesNewRoman",
-                                                                            halign: 'center',
-                                                                            valign: 'middle',
-                                                                            fontStyle: 'bold',
-                                                                            whiteSpace: 'nowrap',
-                                                                            cellWidth: 'auto'
-                                                                        }
-                                                                    },
-                                                                    {
-                                                                        content: 'VERIFIED DATE',
-                                                                        styles: {
-                                                                            font: "TimesNewRoman",
-                                                                            halign: 'center',
-                                                                            valign: 'middle',
-                                                                            fontStyle: 'bold',
-                                                                            whiteSpace: 'nowrap',
-                                                                            cellWidth: 'auto'
-                                                                        }
-                                                                    },
-                                                                    {
-                                                                        content: 'VERIFICATION STATUS'.toUpperCase(),
-                                                                        styles: {
-                                                                            font: "TimesNewRoman",
-                                                                            halign: 'center',
-                                                                            valign: 'middle',
-                                                                            fontStyle: 'bold',
-                                                                            whiteSpace: 'nowrap',
-                                                                            cellWidth: 'auto'
-                                                                        }
-                                                                    },
-                                                                ]
-                                                            ],
-
-                                                            body: remainingServices
-                                                                .filter(service => service?.annexureData?.status !== 'nil') // <-- Filter here
-                                                                .map(service => {
-                                                                    const colorMapping = {
-                                                                        Yellow: 'yellow',
-                                                                        Red: 'red',
-                                                                        Blue: 'blue',
-                                                                        Green: 'green',
-                                                                        Orange: 'orange',
-                                                                        Pink: 'pink',
-                                                                    };
-
-                                                                    const notstatusContent = service?.annexureData?.status || "Not Verified";
-                                                                    const statusContent = notstatusContent
-                                                                        .replace(/_/g, ' ')
-                                                                        .replace(/[^a-zA-Z0-9 ]/g, '')
-                                                                        .replace(/\b\w/g, char => char.toUpperCase());
-
-                                                                    let textColorr = 'black';
-                                                                    for (let color in colorMapping) {
-                                                                        if (statusContent.includes(color)) {
-                                                                            textColorr = colorMapping[color];
-                                                                        }
-                                                                    }
-
-                                                                    return [
-                                                                        {
-                                                                            content: service?.reportFormJson?.json
-                                                                                ? JSON.parse(service.reportFormJson.json)?.heading
-                                                                                : null,
-                                                                            styles: {
-                                                                                fontStyle: 'bold',
-                                                                                halign: 'left',
-                                                                            },
-                                                                        },
-                                                                        {
-                                                                            content:
-                                                                                service?.annexureData &&
-                                                                                    Object.keys(service.annexureData).find(
-                                                                                        key =>
-                                                                                            key.endsWith('info_source') ||
-                                                                                            key.endsWith('information_source') ||
-                                                                                            key.startsWith('info_source') ||
-                                                                                            key.startsWith('information_source')
-                                                                                    )
-                                                                                    ? service.annexureData[
-                                                                                    Object.keys(service.annexureData).find(
-                                                                                        key =>
-                                                                                            key.endsWith('info_source') ||
-                                                                                            key.endsWith('information_source') ||
-                                                                                            key.startsWith('info_source') ||
-                                                                                            key.startsWith('information_source')
-                                                                                    )
-                                                                                    ]
-                                                                                    : null,
-                                                                            styles: {
-                                                                                fontStyle: 'bold',
-                                                                                halign: 'left',
-                                                                            },
-                                                                        },
-                                                                        {
-                                                                            content: service?.annexureData?.created_at
-                                                                                ? new Date(service.annexureData.created_at)
-                                                                                    .toLocaleDateString('en-GB')
-                                                                                    .replace(/\//g, '-')
-                                                                                : 'N/A',
-                                                                            styles: {
-                                                                                fontStyle: 'bold',
-                                                                            },
-                                                                        },
-                                                                        {
-                                                                            content: formatStatus(statusContent).toUpperCase(),
-                                                                            styles: {
-                                                                                font: 'TimesNewRoman',
-                                                                                fontStyle: 'bold',
-                                                                                textColor: textColorr,
-                                                                            },
-                                                                        },
-                                                                    ];
-                                                                }),
-
-                                                            startY: doc.previousAutoTable ? doc.previousAutoTable.finalY + 20 : 20,
-                                                            styles: {
-                                                                fontSize: 9,
-                                                                font: "TimesNewRoman",
-                                                                cellPadding: 2,
-                                                                halign: 'center',
-                                                                valign: 'middle',
-                                                                lineWidth: 0.2,
-                                                                lineColor: [62, 118, 165],
-                                                                textColor: [0, 0, 0],
-                                                            },
-                                                            theme: 'grid',
-                                                            headStyles: {
-                                                                fillColor: backgroundColor,
-                                                                textColor: [0, 0, 0],
-                                                                fontStyle: 'bold',
-                                                                font: "TimesNewRoman",
-                                                                halign: 'center',
-                                                                valign: 'middle',
-                                                            },
-                                                            tableLineColor: [62, 118, 165],
-                                                            tableLineWidth: 0.2,
-                                                            textColor: [0, 0, 0],
-                                                            margin: { left: 10, right: 10 },
-                                                            tableWidth: 'auto',
-                                                            columnStyles: {
-                                                                0: { cellWidth: 'auto', halign: 'center' },
-                                                                1: { cellWidth: 'auto', halign: 'center' },
-                                                                2: { cellWidth: 'auto', halign: 'center' },
-                                                                3: { cellWidth: 'auto', halign: 'center' },
-                                                            },
-                                                        });
-
-
-                                                    }
                                                     addFooter(doc);
 
 
@@ -1888,7 +1712,7 @@ module.exports = {
                                                         newPdfFileName,
                                                         targetDirectory
                                                     );
-                                                    // doc.save(pdfPath);
+                                                    // doc.save('pdfPath.pdf');
                                                     resolve(pdfPathCloud);
                                                 } catch (error) {
                                                     console.error("PDF generation error:", error);
