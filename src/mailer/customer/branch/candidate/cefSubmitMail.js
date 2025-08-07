@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const axios = require("axios");
 const fs = require("fs/promises");
 const path = require("path");
 const mime = require("mime-types");
@@ -56,35 +57,52 @@ const createAttachmentsInfoTable = async (attachments_url) => {
 
   const attachments = [];
 
+  const isRemoteUrl = (str) => /^https?:\/\//i.test(str);
+
   for (const url of urls) {
     const trimmedUrl = url.trim();
-    if (trimmedUrl) {
-      const exists = await checkFileExists(trimmedUrl);
-      if (exists) {
-        const sanitizedUrl = trimmedUrl.replace(/\\/g, "/");
-        const filename = path.basename(sanitizedUrl);
-        const filetype = mime.lookup(sanitizedUrl) || "application/octet-stream";
+    if (!trimmedUrl) {
+      console.warn(`Empty or invalid URL: "${url}"`);
+      continue;
+    }
 
-        try {
-          const stats = await fs.stat(sanitizedUrl);
-          attachments.push({
-            filename: filename,
-            filetype: filetype,
-            filesize: stats.size,
-            fileUrl: sanitizedUrl,
-          });
-        } catch (err) {
-          console.warn(`Unable to get file stats: ${sanitizedUrl}`, err.message);
+    const sanitizedUrl = trimmedUrl.replace(/\\/g, "/");
+    const filename = path.basename(sanitizedUrl);
+    const filetype = mime.lookup(sanitizedUrl) || "application/octet-stream";
+    let filesize = 0;
+
+    if (isRemoteUrl(sanitizedUrl)) {
+      // 🔎 HEAD request for remote file
+      try {
+        const response = await axios.head(sanitizedUrl);
+        if (response.status >= 200 && response.status < 400) {
+          filesize = parseInt(response.headers["content-length"] || "0", 10);
+        } else {
+          continue;
         }
-      } else {
-        console.warn(`File does not exist: ${trimmedUrl}`);
+      } catch (err) {
+        continue;
       }
     } else {
-      console.warn(`Empty or invalid URL: ${url}`);
+      // 📂 Local file stat
+      try {
+        const stats = await fs.stat(sanitizedUrl);
+        filesize = stats.size;
+      } catch (err) {
+        continue;
+      }
     }
+
+    attachments.push({
+      filename,
+      filetype,
+      filesize,
+      fileUrl: sanitizedUrl,
+    });
   }
 
   if (!attachments.length) {
+    console.log("No valid attachments found. Returning empty string.");
     return "";
   }
 

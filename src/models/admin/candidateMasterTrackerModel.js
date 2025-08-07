@@ -805,6 +805,16 @@ const Customer = {
                       return;
                     }
 
+                    const checkTableSql = `SHOW TABLES LIKE 'cef_${dbTable}'`;
+                    const tableResults = await sequelize.query(checkTableSql, {
+                      type: QueryTypes.SHOW,
+                    });
+
+                    if (tableResults[0].length === 0) {
+                      console.log(`Skipping table cef_${dbTable} as it does not exist.`);
+                      return;
+                    }
+
                     try {
                       // Fetch existing columns in the table
                       const describeQuery = `DESCRIBE cef_${dbTable}`;
