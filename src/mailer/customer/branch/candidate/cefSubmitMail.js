@@ -1,5 +1,7 @@
 const nodemailer = require("nodemailer");
+const fs = require("fs/promises");
 const path = require("path");
+const mime = require("mime-types");
 const { sequelize } = require("../../../../config/db"); // Import the existing MySQL connection
 const { QueryTypes } = require("sequelize");
 
@@ -18,8 +20,8 @@ const createAttachments = async (attachments_url) => {
   const urls = Array.isArray(attachments_url)
     ? attachments_url
     : typeof attachments_url === "string"
-    ? attachments_url.split(",")
-    : [];
+      ? attachments_url.split(",")
+      : [];
 
   const attachments = [];
 
@@ -43,6 +45,82 @@ const createAttachments = async (attachments_url) => {
   }
 
   return attachments;
+};
+
+const createAttachmentsInfoTable = async (attachments_url) => {
+  const urls = Array.isArray(attachments_url)
+    ? attachments_url
+    : typeof attachments_url === "string"
+      ? attachments_url.split(",")
+      : [];
+
+  const attachments = [];
+
+  for (const url of urls) {
+    const trimmedUrl = url.trim();
+    if (trimmedUrl) {
+      const exists = await checkFileExists(trimmedUrl);
+      if (exists) {
+        const sanitizedUrl = trimmedUrl.replace(/\\/g, "/");
+        const filename = path.basename(sanitizedUrl);
+        const filetype = mime.lookup(sanitizedUrl) || "application/octet-stream";
+
+        try {
+          const stats = await fs.stat(sanitizedUrl);
+          attachments.push({
+            filename: filename,
+            filetype: filetype,
+            filesize: stats.size,
+            fileUrl: sanitizedUrl,
+          });
+        } catch (err) {
+          console.warn(`Unable to get file stats: ${sanitizedUrl}`, err.message);
+        }
+      } else {
+        console.warn(`File does not exist: ${trimmedUrl}`);
+      }
+    } else {
+      console.warn(`Empty or invalid URL: ${url}`);
+    }
+  }
+
+  if (!attachments.length) {
+    return "";
+  }
+
+  let rowsHTML = "";
+  attachments.forEach((attachment, index) => {
+    rowsHTML += `
+      <tr>
+        <td style="border: 1px solid #ccc; padding: 8px;">${index + 1}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">${attachment.filename}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">${attachment.filetype}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">${(attachment.filesize / 1024).toFixed(2)} KB</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">
+          <a href="${attachment.fileUrl}" target="_blank" style="color: #ee8e1f; text-decoration: underline;">View</a>
+        </td>
+      </tr>
+    `;
+  });
+
+  const tableHTML = `
+    <table style="border-collapse: collapse; width: 100%; margin-top: 20px;">
+      <thead>
+        <tr style="background-color: #ee8e1f; color: #fff;">
+          <th style="border: 1px solid #ccc; padding: 8px;">SL</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">File Name</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">File Type</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">File Size</th>
+          <th style="border: 1px solid #ccc; padding: 8px;">File Link</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHTML}
+      </tbody>
+    </table>
+  `;
+
+  return tableHTML;
 };
 
 // Function to send email
@@ -89,10 +167,13 @@ async function cefSubmitMail(
       console.warn("No valid attachments to send.");
     }
 
+    const attachments_table = await createAttachmentsInfoTable(attachments_url);
+
     // Replace placeholders in the email template
     let template = email.template
       .replace(/{{candidate_applicant_name}}/g, candidate_applicant_name)
-      .replace(/{{customer_name}}/g, customer_name);
+      .replace(/{{customer_name}}/g, customer_name)
+      .replace(/{{attachments_table}}/g, attachments_table);
 
     // Prepare CC list
     const ccList = ccArr
@@ -152,7 +233,7 @@ async function cefSubmitMail(
   } catch (error) {
     console.error("Error sending email:", error.message);
   } finally {
-    
+
   }
 }
 
