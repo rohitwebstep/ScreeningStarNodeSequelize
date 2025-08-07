@@ -524,9 +524,19 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
-                                ca.is_deleted != 1
-                                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                                (
+                                  ca.status <> 'completed'
+                                  AND ca.is_deleted != 1
+                                  AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                                  AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                                )
+                                OR
+                                (
+                                  ca.status IN ('wip', 'insuff')
+                                  AND ca.is_deleted != 1
+                                  AND MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                  AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                )
                                 ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
@@ -557,11 +567,20 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
+                                (
                                   ca.status <> 'completed'
                                   AND ca.is_deleted != 1
                                   AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
                                   AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-                                  ${client_application_ids_query_condition}
+                                )
+                                OR
+                                (
+                                  ca.status IN ('wip', 'insuff')
+                                  AND ca.is_deleted != 1
+                                  AND MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                  AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                )
+                                ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
                         ) AS pending_counts ON customers.id = pending_counts.customer_id
