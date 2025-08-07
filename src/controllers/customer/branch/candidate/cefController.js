@@ -846,14 +846,14 @@ const sendNotificationEmails = (
                     const candidateFormPdfTargetDirectory = `uploads/customers/${client_unique_id}/candidate-applications/CD-${client_unique_id}-${candidateAppId}/background-form-reports`;
                     const digitalConsentPdfTargetDirectory = `uploads/customers/${client_unique_id}/candidate-applications/CD-${client_unique_id}-${candidateAppId}digital-concent`;
 
-                    const pdfFileName = `${name}_${formattedDate}.pdf`
+                    const candidateFormPDFName = `BGV Form-${name}_${formattedDate}.pdf`
                       .replace(/\s+/g, "-")
                       .toLowerCase();
                     const candidateFormPDFPath = await candidateFormPDF(
                       candidateAppId,
                       branch_id,
                       customer_id,
-                      pdfFileName,
+                      candidateFormPDFName,
                       candidateFormPdfTargetDirectory
                     );
                     console.log("candidateFormPDFPath - ", candidateFormPDFPath);
@@ -868,9 +868,12 @@ const sendNotificationEmails = (
                     );
                     */
 
+                    const digitalConsentPdfName = `Applicant Consent-${name}_${formattedDate}.pdf`
+                      .replace(/\s+/g, "-")
+                      .toLowerCase();
                     const digitalConsentPdfPath = await candidateDigitalConsent(
                       name,
-                      pdfFileName,
+                      digitalConsentPdfName,
                       digitalConsentPdfTargetDirectory
                     );
 
@@ -1135,7 +1138,8 @@ exports.upload = async (req, res) => {
                   if (req.files.images && req.files.images.length > 0) {
                     const uploadedImages = await saveImages(
                       req.files.images,
-                      targetDirectory
+                      targetDirectory,
+                      'Applicant Document'
                     );
                     uploadedImages.forEach((imagePath) => {
                       savedImagePaths.push(`${imageHost}/${imagePath}`);
@@ -1146,7 +1150,8 @@ exports.upload = async (req, res) => {
                   if (req.files.image && req.files.image.length > 0) {
                     const uploadedImage = await saveImage(
                       req.files.image[0],
-                      targetDirectory
+                      targetDirectory,
+                      'Applicant Document'
                     );
                     savedImagePaths.push(`${imageHost}/${uploadedImage}`);
                   }

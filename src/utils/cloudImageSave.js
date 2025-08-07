@@ -87,11 +87,16 @@ const upload = multer({
   fileFilter,
 });
 // Function to save a single image and upload it to FTP
-const saveImage = async (file, targetDir) => {
+const saveImage = async (file, targetDir, fileNameSlug = '') => {
   return new Promise((resolve, reject) => {
     if (file) {
       const originalPath = path.join("uploads", file.filename); // Original file path
-      const newPath = path.join(targetDir, file.filename); // New file path
+
+      const newFileName = fileNameSlug 
+        ? `${fileNameSlug}-${file.filename}` 
+        : file.filename;
+
+      const newPath = path.join(targetDir, newFileName); // New file path
 
       // Ensure target directory exists
       if (!fs.existsSync(targetDir)) {
@@ -189,10 +194,10 @@ const uploadToFtp = async (filePath) => {
 };
 
 // Function to save multiple images and upload them to FTP
-const saveImages = async (files, targetDir) => {
+const saveImages = async (files, targetDir, fileNameSlug = '') => {
   const savedImagePaths = [];
   for (const file of files) {
-    const savedImagePath = await saveImage(file, targetDir); // Save and upload each file
+    const savedImagePath = await saveImage(file, targetDir, fileNameSlug); // Save and upload each file
     savedImagePaths.push(savedImagePath);
   }
   return savedImagePaths; // Return an array of saved image paths
