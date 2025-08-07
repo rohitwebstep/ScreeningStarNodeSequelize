@@ -610,19 +610,31 @@ const Customer = {
         */
 
         const headBranchApplicationsCountQuery = `
-        SELECT COUNT(*)
-        FROM \`client_applications\` ca
-        INNER JOIN \`branches\` b ON ca.branch_id = b.id
-        LEFT JOIN \`cmt_applications\` cmt ON ca.id = cmt.client_application_id
-        INNER JOIN \`customers\` cust ON ca.customer_id = cust.id
-        WHERE MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-          AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-          AND ca.is_deleted != 1 
-          AND cust.is_deleted != 1 
-          AND ca.customer_id = ? 
-          AND b.customer_id = ? 
-          AND b.is_head = ?;
-      `;
+          SELECT COUNT(*)
+          FROM \`client_applications\` ca
+          INNER JOIN \`branches\` b ON ca.branch_id = b.id
+          LEFT JOIN \`cmt_applications\` cmt ON ca.id = cmt.client_application_id
+          INNER JOIN \`customers\` cust ON ca.customer_id = cust.id
+          WHERE 
+            (
+              (
+                ca.status <> 'completed'
+                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+              )
+              OR
+              (
+                ca.status IN ('wip', 'insuff')
+                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
+                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
+              )
+            )
+            AND ca.is_deleted != 1 
+            AND cust.is_deleted != 1 
+            AND ca.customer_id = ? 
+            AND b.customer_id = ? 
+            AND b.is_head = ?;
+        `;
 
         const headBranchApplicationsCount = await new Promise(
           async (resolve, reject) => {
