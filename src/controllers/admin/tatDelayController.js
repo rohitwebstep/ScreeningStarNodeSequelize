@@ -62,7 +62,6 @@ exports.list = (req, res) => {
 
 exports.sendAutoNotification = (req, res) => {
   // console.log("🔄 sendAutoNotification triggered");
-
   tatDelay.list((err, result) => {
     // console.log("📞 tatDelay.list called");
 

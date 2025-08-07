@@ -31,6 +31,7 @@ const teamManagementRoutes = require("./routes/admin/teamManagementRoutes");
 const generateInvoiceRoutes = require("./routes/admin/generateInvoiceRoutes");
 const personalManagerRoutes = require("./routes/admin/personalManagerRoutes");
 const acknowledgementRoutes = require("./routes/admin/acknowledgementRoutes");
+const tatDelayRoutes = require("./routes/admin/tatDelayRoutes");
 const clientAllocationRoutes = require("./routes/admin/clientAllocationRoutes");
 const authorizedDetailRoutes = require("./routes/admin/authorizedDetailRoutes");
 const escalationManagerRoutes = require("./routes/admin/escalationManagerRoutes");
@@ -98,6 +99,7 @@ app.use("/notification", notificationRoutes);
 app.use("/service-group", serviceGroupRoutes);
 app.use("/weekly-reports", weeklyReportRoutes);
 app.use("/acknowledgement", acknowledgementRoutes);
+app.use("/tat-delay", tatDelayRoutes);
 app.use("/external-login-credentials", externalLoginCredentials);
 app.use("/utils", utilsRoutes);
 // Error handling middleware (optional)
