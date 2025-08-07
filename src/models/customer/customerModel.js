@@ -300,8 +300,8 @@ const Customer = {
         \`agreement_date\`, \`agreement_duration\`,
         \`state\`, \`state_code\`, 
         \`client_standard\`,
-        \`dedicated_point_of_contact\`,\`first_level_matrix_name\`,\`first_level_matrix_designation\`,\`first_level_matrix_mobile\`,\`first_level_matrix_email\`, \`visible_fields\`, \`custom_template\`, \`custom_address\`, \`esc_manager_name\`, \`esc_manager_email\`, \`esc_manager_mobile\`, \`esc_manager_desgn\`, \`client_spoc_name\`, \`client_spoc_email\`, \`client_spoc_mobile\`, \`client_spoc_desgn\`, \`billing_spoc_name\`, \`billing_spoc_email\`, \`billing_spoc_mobile\`, \`billing_spoc_desgn\`, \`billing_escalation_name\`, \`billing_escalation_email\`, \`billing_escalation_mobile\`, \`billing_escalation_desgn\`, \`authorized_detail_name\`, \`authorized_detail_email\`, \`authorized_detail_mobile\`, \`authorized_detail_desgn\`
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        \`dedicated_point_of_contact\`,\`first_level_matrix_name\`,\`first_level_matrix_designation\`,\`first_level_matrix_mobile\`,\`first_level_matrix_email\`, \`visible_fields\`, \`custom_template\`, \`custom_address\`, \`disclaimer_emails\`, \`esc_manager_name\`, \`esc_manager_email\`, \`esc_manager_mobile\`, \`esc_manager_desgn\`, \`client_spoc_name\`, \`client_spoc_email\`, \`client_spoc_mobile\`, \`client_spoc_desgn\`, \`billing_spoc_name\`, \`billing_spoc_email\`, \`billing_spoc_mobile\`, \`billing_spoc_desgn\`, \`billing_escalation_name\`, \`billing_escalation_email\`, \`billing_escalation_mobile\`, \`billing_escalation_desgn\`, \`authorized_detail_name\`, \`authorized_detail_email\`, \`authorized_detail_mobile\`, \`authorized_detail_desgn\`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const valuesCustomerMetas = [
@@ -322,6 +322,7 @@ const Customer = {
       metaData.visible_fields || null,
       metaData.custom_template || null,
       metaData.custom_address || null,
+      metaData.disclaimer_emails || null,
       metaData.esc_manager_name || '',
       metaData.esc_manager_email || '',
       metaData.esc_manager_mobile || '',
@@ -373,6 +374,7 @@ const Customer = {
         \`visible_fields\` = ?,
         \`custom_template\` = ?,
         \`custom_address\` = ?,
+        \`disclaimer_emails\` = ?,
         \`esc_manager_name\` = ?,
         \`esc_manager_email\` = ?,
         \`esc_manager_mobile\` = ?,
@@ -412,6 +414,7 @@ const Customer = {
       metaData.visible_fields,
       metaData.custom_template,
       metaData.custom_address,
+      metaData.disclaimer_emails,
       metaData.esc_manager_name || "",
       metaData.esc_manager_email || "",
       metaData.esc_manager_mobile || "",
@@ -782,7 +785,7 @@ const Customer = {
   getCustomerById: async (id, callback) => {
     try {
       // Fetch basic customer details
-      const sql = "SELECT C.*, CM.tat_days, CM.visible_fields, CM.custom_template, CM.custom_logo, CM.custom_address FROM `customers` C INNER JOIN `customer_metas` CM ON CM.customer_id = C.id WHERE C.`id` = ? AND C.is_deleted != 1";
+      const sql = "SELECT C.*, CM.tat_days, CM.visible_fields, CM.custom_template, CM.custom_logo, CM.custom_address, CM.disclaimer_emails FROM `customers` C INNER JOIN `customer_metas` CM ON CM.customer_id = C.id WHERE C.`id` = ? AND C.is_deleted != 1";
 
       const results = await sequelize.query(sql, {
         type: QueryTypes.SELECT,
