@@ -1578,21 +1578,24 @@ module.exports = {
 
                                                     // Line 1
                                                     doc.setFont("TimesNewRoman", "normal");
-                                                    doc.text("This is a computer-generated document issued by", startXNew, yPosition);
+                                                    // Base sentence
+                                                    const baseText = "This is a computer-generated document issued by";
+                                                    doc.text(baseText, startXNew, yPosition);
 
+                                                    // Choose company name based on template
+                                                    const customCompanyName = applicationInfo.custom_template === "yes"
+                                                        ? applicationInfo.customer_name
+                                                        : "Screeningstar Solutions Private Limited";
+
+                                                    // Print company name after base sentence
                                                     doc.setFont("TimesNewRoman", "bold");
-                                                    if (applicationInfo.custom_template == "yes") {
-                                                        doc.text(`${applicationInfo.customer_name}`, startXNew + doc.getTextWidth("This is a computer-generated document issued by"), yPosition);
-                                                    } else {
-                                                        doc.text("Screeningstar Solutions Private Limited", startXNew + doc.getTextWidth("This is a computer-generated document issued by"), yPosition);
-                                                    }
+                                                    const baseTextWidth = doc.getTextWidth(baseText);
+                                                    doc.text(customCompanyName, startXNew + baseTextWidth, yPosition);
 
+                                                    // Print "and does not" after the full sentence
                                                     doc.setFont("TimesNewRoman", "normal");
-                                                    if (applicationInfo.custom_template == "yes") {
-                                                        doc.text("and does not", startXNew + doc.getTextWidth("This is a computer-generated document issued by Screeningstar Solutions Private Limited") + 7, yPosition);
-                                                    } else {
-                                                        doc.text("and does not", startXNew + doc.getTextWidth(`This is a computer-generated document issued by ${applicationInfo.customer_name}`) + 7, yPosition);
-                                                    }
+                                                    const fullLineWidth = baseTextWidth + doc.getTextWidth(customCompanyName) + 7;
+                                                    doc.text("and does not", startXNew + fullLineWidth, yPosition);
 
                                                     doc.setFont("TimesNewRoman", "normal");
                                                     yPosition += 6;
