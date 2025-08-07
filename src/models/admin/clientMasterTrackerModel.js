@@ -474,7 +474,7 @@ const Customer = {
         console.log("client_application_ids - ", client_application_ids);
         // Generate client_application_ids query condition if the array is not empty
         if (client_application_ids.length > 0) {
-          client_application_ids_query_condition = `WHERE ca.id IN (${client_application_ids.join(",")})`;
+          client_application_ids_query_condition = `AND ca.id IN (${client_application_ids.join(",")})`;
         }
 
         console.log("customer_ids - ", customer_ids);
@@ -523,7 +523,11 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
-                              ${client_application_ids_query_condition}
+                            WHERE
+                                ca.is_deleted != 1
+                                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                                ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
                         ) AS application_counts ON customers.id = application_counts.customer_id
@@ -537,6 +541,10 @@ const Customer = {
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
                                 ca.status = 'completed'
+                                AND ca.is_deleted != 1
+                                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                                ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
                         ) AS completed_counts ON customers.id = completed_counts.customer_id
@@ -549,7 +557,11 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
-                                ca.status <> 'completed'
+                                  ca.status <> 'completed'
+                                  AND ca.is_deleted != 1
+                                  AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                                  AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                                  ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
                         ) AS pending_counts ON customers.id = pending_counts.customer_id
@@ -1218,7 +1230,6 @@ const Customer = {
           order by 
             b.id DESC
         `;
-
 
     const qcStatusPendingResult = await sequelize.query(qcStatusPendingSQL, {
       type: QueryTypes.SELECT,
