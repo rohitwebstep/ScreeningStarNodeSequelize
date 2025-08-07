@@ -1663,27 +1663,50 @@ module.exports = {
 
                                                     yPosition += 8;
                                                     doc.text("For queries or customizations, please contact:", startXNew, yPosition);
-                                                    let anchorText = "compliance@screeningstar.com";
-                                                    let bgvEmail = "bgv@screeningstar.com";
+
+                                                    // Example: disclaimer_emails = ["email1@example.com", "email2@example.com"]
+                                                    let disclaimer_emails = [];
+
+                                                    function validateEmail(email) {
+                                                        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                                        return re.test(email);
+                                                    }
 
                                                     if (applicationInfo.custom_template == "yes") {
-                                                        anchorText = modifiedNames[0] || anchorText;
-                                                        bgvEmail = modifiedNames[1] || bgvEmail;
+                                                        disclaimer_emails = applicationInfo.custom_template
+                                                            .split(',')
+                                                            .map(email => email.trim())
+                                                            .filter(email => validateEmail(email));
                                                     } else {
-                                                        anchorText = "compliance@screeningstar.com";
-                                                        bgvEmail = "bgv@screeningstar.com";
+                                                        disclaimer_emails = ["compliance@screeningstar.com", "bgv@screeningstar.com"];
                                                     }
+
                                                     yPosition += 10;
+                                                    let currentDisclaimerX = startXNew;
 
+                                                    disclaimer_emails.forEach((email, index) => {
+                                                        // Show icon before the second email (index === 1)
+                                                        if (index === 1 && emailIconGreen) {
+                                                            doc.addImage(emailIconGreen, 'PNG', currentDisclaimerX, yPosition - 4, 5, 5);
+                                                            currentDisclaimerX += 7; // Add space after the icon
+                                                        }
 
-                                                    // Email 1 - green envelope + blue text
-                                                    doc.addImage(emailIconGreen, 'PNG', startXNew, yPosition - 4, 5, 5); // Optional icon
-                                                    doc.setTextColor(0, 0, 255);
-                                                    doc.text(anchorText, startXNew + 7, yPosition);
+                                                        // Add separator before emails with index > 0
+                                                        if (index > 0) {
+                                                            const separator = " | ";
+                                                            doc.setTextColor(0, 0, 255);
+                                                            doc.text(separator, currentDisclaimerX, yPosition);
+                                                            currentDisclaimerX += doc.getTextWidth(separator);
+                                                        }
 
-                                                    // Email 2 - next to the first
-                                                    doc.text("| " + bgvEmail, startXNew + 7 + doc.getTextWidth(anchorText + " "), yPosition);
-                                                    doc.setTextColor(0, 0, 0); // Reset text color for anything that follows
+                                                        // Draw the email text
+                                                        doc.setTextColor(0, 0, 255);
+                                                        doc.text(email, currentDisclaimerX, yPosition);
+                                                        currentDisclaimerX += doc.getTextWidth(email + " ");
+                                                    });
+
+                                                    // Reset color after emails
+                                                    doc.setTextColor(0, 0, 0);
 
                                                     // Update Company Details Y (aligned with the same paragraph block)
                                                     let companyDetailsY = yPosition + disclaimerTextTopMargin - 4;
