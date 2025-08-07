@@ -1695,7 +1695,7 @@ module.exports = {
 
                                                     disclaimer_emails.forEach((email, index) => {
                                                         // Show icon before the second email (index === 1)
-                                                        if (index === 1 && emailIconGreen) {
+                                                        if (index === 0 && emailIconGreen) {
                                                             doc.addImage(emailIconGreen, 'PNG', currentDisclaimerX, yPosition - 4, 5, 5);
                                                             currentDisclaimerX += 7; // Add space after the icon
                                                         }
