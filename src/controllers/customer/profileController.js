@@ -251,6 +251,7 @@ exports.create = (req, res) => {
     visible_fields,
     custom_template,
     custom_address,
+    disclaimer_emails,
     esc_manager_name,
     esc_manager_email,
     esc_manager_mobile,
@@ -308,6 +309,7 @@ exports.create = (req, res) => {
   ) {
     custom_template_string = "yes";
     requiredFields.custom_address = custom_address;
+    requiredFields.disclaimer_emails = disclaimer_emails;
     // requiredFields.custom_logo = custom_logo;
   }
 
@@ -481,6 +483,11 @@ exports.create = (req, res) => {
                       custom_template_string &&
                         custom_template_string.toLowerCase() === "yes"
                         ? custom_address
+                        : null,
+                    disclaimer_emails:
+                      custom_template_string &&
+                        custom_template_string.toLowerCase() === "yes"
+                        ? disclaimer_emails
                         : null,
                     state,
                     state_code,
