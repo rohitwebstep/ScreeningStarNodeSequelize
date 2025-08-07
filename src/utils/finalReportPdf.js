@@ -1581,9 +1581,18 @@ module.exports = {
                                                     doc.text("This is a computer-generated document issued by", startXNew, yPosition);
 
                                                     doc.setFont("TimesNewRoman", "bold");
-                                                    doc.text("Screeningstar Solutions Private Limited", startXNew + doc.getTextWidth("This is a computer-generated document issued by"), yPosition);
+                                                    if (applicationInfo.custom_template == "yes") {
+                                                        doc.text(`${applicationInfo.customer_name}`, startXNew + doc.getTextWidth("This is a computer-generated document issued by"), yPosition);
+                                                    } else {
+                                                        doc.text("Screeningstar Solutions Private Limited", startXNew + doc.getTextWidth("This is a computer-generated document issued by"), yPosition);
+                                                    }
+
                                                     doc.setFont("TimesNewRoman", "normal");
-                                                    doc.text("and does not", startXNew + doc.getTextWidth("This is a computer-generated document issued by Screeningstar Solutions Private Limited") + 7, yPosition);
+                                                    if (applicationInfo.custom_template == "yes") {
+                                                        doc.text("and does not", startXNew + doc.getTextWidth("This is a computer-generated document issued by Screeningstar Solutions Private Limited") + 7, yPosition);
+                                                    } else {
+                                                        doc.text("and does not", startXNew + doc.getTextWidth(`This is a computer-generated document issued by ${applicationInfo.customer_name}`) + 7, yPosition);
+                                                    }
 
                                                     doc.setFont("TimesNewRoman", "normal");
                                                     yPosition += 6;
