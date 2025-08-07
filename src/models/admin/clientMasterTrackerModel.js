@@ -568,7 +568,31 @@ const Customer = {
 
       // Process each result to fetch client_spoc names
       for (const result of results) {
-        const headBranchApplicationsCountQuery = `SELECT COUNT(*) FROM \`client_applications\` ca INNER JOIN \`branches\` b ON ca.branch_id = b.id WHERE ca.customer_id = ? AND b.customer_id = ? AND b.is_head = ?`;
+        /*
+          const headBranchApplicationsCountQuery = `
+          SELECT COUNT(*)
+          FROM \`client_applications\` ca
+          INNER JOIN \`branches\` b ON ca.branch_id = b.id
+          WHERE ca.customer_id = ?
+            AND b.customer_id = ?
+            AND b.is_head = ?`;
+        */
+
+        const headBranchApplicationsCountQuery = `
+        SELECT COUNT(*)
+        FROM \`client_applications\` ca
+        INNER JOIN \`branches\` b ON ca.branch_id = b.id
+        LEFT JOIN \`cmt_applications\` cmt ON ca.id = cmt.client_application_id
+        INNER JOIN \`customers\` cust ON ca.customer_id = cust.id
+        WHERE MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+          AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+          AND ca.is_deleted != 1 
+          AND cust.is_deleted != 1 
+          AND ca.customer_id = ? 
+          AND b.customer_id = ? 
+          AND b.is_head = ?;
+      `;
+
         const headBranchApplicationsCount = await new Promise(
           async (resolve, reject) => {
             const headBranchResults = await sequelize.query(headBranchApplicationsCountQuery, {
