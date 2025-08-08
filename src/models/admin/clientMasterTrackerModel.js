@@ -483,6 +483,7 @@ const Customer = {
           customer_ids_query_condition = `AND customers.id IN (${customer_ids.join(",")})`;
         }
       }
+
       // If no filter_status is provided, proceed with the final SQL query without filters
       const finalSql = `WITH BranchesCTE AS (
                             SELECT
@@ -524,19 +525,9 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
-                                (
-                                  ca.status <> 'completed'
-                                  AND ca.is_deleted != 1
-                                  AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                                  AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-                                )
-                                OR
-                                (
-                                  ca.status IN ('wip', 'insuff')
-                                  AND ca.is_deleted != 1
-                                  AND MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                  AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                )
+                                ca.is_deleted != 1
+                                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
                                 ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
@@ -568,7 +559,7 @@ const Customer = {
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
                                 (
-                                  ca.status <> 'completed'
+                                  ca.status != 'completed'
                                   AND ca.is_deleted != 1
                                   AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
                                   AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
@@ -592,10 +583,11 @@ const Customer = {
                             application_counts.latest_application_date DESC;
                         `;
 
-      console.log("finalSql - ", finalSql);
+                        console.log(`finalSql - `, finalSql);
       const results = await sequelize.query(finalSql, {
         type: QueryTypes.SELECT,
       });
+      console.log(`results - `, results);
 
       // Process each result to fetch client_spoc names
       for (const result of results) {
