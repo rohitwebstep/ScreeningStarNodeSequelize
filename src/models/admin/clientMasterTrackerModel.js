@@ -583,7 +583,7 @@ const Customer = {
                             application_counts.latest_application_date DESC;
                         `;
 
-                        console.log(`finalSql - `, finalSql);
+      console.log(`finalSql - `, finalSql);
       const results = await sequelize.query(finalSql, {
         type: QueryTypes.SELECT,
       });
@@ -608,20 +608,9 @@ const Customer = {
           LEFT JOIN \`cmt_applications\` cmt ON ca.id = cmt.client_application_id
           INNER JOIN \`customers\` cust ON ca.customer_id = cust.id
           WHERE 
-            (
-              (
-                ca.status <> 'completed'
-                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-              )
-              OR
-              (
-                ca.status IN ('wip', 'insuff')
-                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-              )
-            )
-            AND ca.is_deleted != 1 
+            ca.is_deleted != 1
+            AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+            AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
             AND cust.is_deleted != 1 
             AND ca.customer_id = ? 
             AND b.customer_id = ? 
