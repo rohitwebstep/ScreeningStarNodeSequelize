@@ -92,34 +92,80 @@ async function tatDelayMail(mailModule, action, applications, toArr = [], ccArr 
       }
     });
 
-    const finalToArr = toArr.length ? toArr : extractedToArr;
-    const recipientList = finalToArr.map((cust) => `"${cust.name}" <${cust.email}>`);
 
-    // Prepare CC recipients
+    // Prepare CC list
     const ccList = ccArr
-      .flatMap((entry) => {
+      .map((entry) => {
+        let emails = [];
+
         try {
-          let emails = [];
           if (Array.isArray(entry.email)) {
             emails = entry.email;
           } else if (typeof entry.email === "string") {
-            let cleaned = entry.email.trim().replace(/\\"/g, '"').replace(/^"|"$/g, "");
-            emails = cleaned.startsWith("[") ? JSON.parse(cleaned) : [cleaned];
+            let cleanedEmail = entry.email
+              .trim()
+              .replace(/\\"/g, '"')
+              .replace(/^"|"$/g, "");
+
+            if (cleanedEmail.startsWith("[") && cleanedEmail.endsWith("]")) {
+              emails = JSON.parse(cleanedEmail);
+            } else {
+              emails = [cleanedEmail];
+            }
           }
-          return emails.map((e) => `"${entry.name}" <${e.trim()}>`);
-        } catch (err) {
-          console.error("⚠️ Failed parsing CC entry:", entry, err);
-          return [];
+        } catch (e) {
+          console.error("Error parsing email JSON:", entry.email, e);
+          return ""; // Skip this entry if parsing fails
         }
+
+        return emails
+          .filter((email) => email) // Filter out invalid emails
+          .map((email) => `"${entry.name}" <${email.trim()}>`) // Ensure valid and trimmed emails
+          .join(", ");
+      })
+      .filter((cc) => cc !== "") // Remove any empty CCs from failed parses
+      .join(", ");
+
+    // Validate recipient email(s)
+    if (!toArr || toArr.length === 0) {
+      throw new Error("No recipient email provided");
+    }
+
+    // Prepare recipient list
+    const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    const toList = toArr
+      .map((recipient) => {
+        let name = recipient.name;
+        let email = recipient.email;
+
+        // If 'name' is actually an email, swap them
+        if (isValidEmail(recipient.name) && !isValidEmail(recipient.email)) {
+          email = recipient.name;
+          name = recipient.email;
+        }
+
+        if (isValidEmail(email)) {
+          return `"${name}" <${email.trim()}>`;
+        }
+        console.warn("Invalid recipient object:", recipient);
+        return null;
       })
       .filter(Boolean)
       .join(", ");
 
+    if (!toList) {
+      throw new Error("Failed to prepare recipient list due to invalid recipient data");
+    }
+
+    console.log(`toList - `, toList);
+    console.log(`ccList - `, ccList);
+
     // Send the email
     const info = await transporter.sendMail({
       from: `"${smtp.title}" <${smtp.username}>`,
-      to: recipientList.join(", "),
-      cc: ccList || undefined,
+      to: toList,
+      cc: ccList,
       subject: email.title,
       html: template,
     });
