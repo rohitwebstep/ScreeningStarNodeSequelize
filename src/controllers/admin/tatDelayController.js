@@ -90,23 +90,23 @@ exports.sendAutoNotification = (req, res) => {
     // console.log("🔧 Setting admin details");
     const toArr = [
       {
-        name: "qc@screeningstar.com",
-        email: "QC Team",
+        name: "QC Team",
+        email: "qc@screeningstar.com"
       }
     ];
 
     const ccArr = [
       {
-        name: "bgv@screeningstar.com",
-        email: "BGV Team",
+        name: "BGV Team",
+        email: "bgv@screeningstar.com"
       },
       {
-        name: "screeningstarbackup@gmail.com",
-        email: "ScreeningStar Backup",
+        name: "ScreeningStar Backup",
+        email: "screeningstarbackup@gmail.com"
       },
       {
-        name: "rohitwebstep@gmail.com",
-        email: "Rohit Webstep",
+        name: "Rohit Webstep",
+        email: "rohitwebstep@gmail.com"
       }
     ];
 
