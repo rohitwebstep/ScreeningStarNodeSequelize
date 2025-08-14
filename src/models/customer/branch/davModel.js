@@ -9,7 +9,7 @@ const dav = {
       const appSql = `
                   SELECT 
                     ca.*, 
-                    c.name AS organization_name
+                    c.name AS company_name
                   FROM candidate_applications ca
                   INNER JOIN customers c ON ca.customer_id = c.id
                   WHERE ca.id = ? AND ca.branch_id = ? AND ca.customer_id = ?;
