@@ -242,6 +242,41 @@ const dav = {
     }
   },
 
+  getAttachmentsByCandidateAppID: async (candidateApplicationId, callback) => {
+    try {
+      // Define SQL query to fetch attachment fields from dav_applications
+      const query = `
+      SELECT identity_proof, home_photo, locality
+      FROM dav_applications
+      WHERE candidate_application_id = ?
+    `;
+
+      // Execute the query
+      const results = await sequelize.query(query, {
+        replacements: [candidateApplicationId],
+        type: QueryTypes.SELECT,
+      });
+
+      const attachments = [];
+
+      // Process and collect non-null attachment values
+      if (results.length > 0) {
+        const record = results[0];
+        for (const key in record) {
+          if (record[key]) {
+            attachments.push(record[key]);
+          }
+        }
+      }
+
+      // Return the result as a comma-separated string
+      callback(null, attachments.join(", "));
+    } catch (error) {
+      console.error("Failed to fetch attachments:", error);
+      callback(error, null);
+    }
+  },
+
 
 };
 

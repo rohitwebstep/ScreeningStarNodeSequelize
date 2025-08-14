@@ -743,8 +743,6 @@ const cef = {
 
 
     }
-
-
   },
 
   getAttachmentsByClientAppID: async (candidate_application_id, callback) => {

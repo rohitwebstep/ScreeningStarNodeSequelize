@@ -278,12 +278,11 @@ exports.submit = (req, res) => {
 
 exports.testDavPdf = async (req, res) => {
   try {
-    const candidate_application_id = 113;
-    const client_unique_id = "GQ-INDV";
-    const application_id = "GQ-INDV-1";
-    const branch_id = 86;
-    const customer_id = 72;
-    const name = "kalia";
+    const candidate_application_id = 252;
+    const client_unique_id = "CL-943";
+    const branch_id = 96;
+    const customer_id = 82;
+    const name = "IMAGE TEST ";
 
     const today = new Date();
     const formattedDate = `${today.getFullYear()}-${String(
@@ -363,7 +362,7 @@ const sendNotificationEmails = (
                   message: "Failed to retrieve email addresses.",
                 });
               }
-              CEF.getAttachmentsByClientAppID(
+              DAV.getAttachmentsByCandidateAppID(
                 candidateAppId,
                 async (err, attachments) => {
                   if (err) {
@@ -411,7 +410,8 @@ const sendNotificationEmails = (
                       pdfFileName,
                       candidateFormPdfTargetDirectory
                     );
-                    console.log("candidateDAVFromPDFPath - ", candidateDAVFromPDFPath);
+
+                    // console.log("candidateDAVFromPDFPath - ", candidateDAVFromPDFPath);
 
                     // console.log("step 5.1: Generate PDF - ", pdfPath);
                     let newAttachments = [];
