@@ -7,10 +7,13 @@ const dav = {
     try {
       // Step 1: Check if application exists in candidate_applications
       const appSql = `
-        SELECT *
-        FROM candidate_applications
-        WHERE id = ? AND branch_id = ? AND customer_id = ?;
-      `;
+                  SELECT 
+                    ca.*, 
+                    c.name AS organization_name
+                  FROM candidate_applications ca
+                  INNER JOIN customers c ON ca.customer_id = c.id
+                  WHERE ca.id = ? AND ca.branch_id = ? AND ca.customer_id = ?;
+                `;
 
       const appResults = await sequelize.query(appSql, {
         replacements: [app_id, branch_id, customer_id],
