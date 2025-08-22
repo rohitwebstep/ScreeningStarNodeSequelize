@@ -8,6 +8,7 @@ const hashPassword = (password) =>
 const Acknowledgement = {
   list: async (callback) => {
     try {
+      /*
       const sql = `
         SELECT 
           MAX(ca.\`id\`) AS \`id\`, 
@@ -30,6 +31,23 @@ const Acknowledgement = {
           ca.\`branch_id\`, 
           ca.\`customer_id\`;
       `;
+      */
+
+      const sql = `
+                SELECT 
+                    MAX(\`id\`) AS \`id\`,
+                    \`branch_id\`,
+                    \`customer_id\`,
+                    COUNT(*) AS application_count
+                FROM 
+                    \`client_applications\`
+                WHERE 
+                    \`ack_sent\` = 0
+                GROUP BY 
+                    \`branch_id\`, 
+                    \`customer_id\`;
+            `;
+
 
       const results = await sequelize.query(sql, { type: QueryTypes.SELECT });
 
