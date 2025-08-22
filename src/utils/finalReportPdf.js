@@ -501,8 +501,8 @@ module.exports = {
 
                                                     const profileSize = 50;
                                                     const profileY = 45;
-                                                    const nameFontSize = 28;
-                                                    const companyBarHeight = 15;
+                                                    const nameFontSize = 16;
+
 
                                                     // === 1. LOGO ===
                                                     const screeningLogo = screeningLogoNew;
@@ -549,8 +549,8 @@ module.exports = {
                                                     doc.setFontSize(nameFontSize);
                                                     doc.setTextColor(0);
                                                     doc.setFont("TimesNewRoman", "bold");
-                                                    const lines = doc.splitTextToSize(nameText, 120); // 100 is max width
-                                                    doc.text(lines, centerX + 20, nameY, { align: "center" });
+                                                    const lines = doc.splitTextToSize(nameText, 100);// 100 is max width
+                                                    doc.text(lines, centerX + 2, nameY + 8, { align: "left" });
                                                     // === 5. COMPANY NAME BAR (adaptive split based on name and company)
                                                     const barY = nameY + 20;
                                                     const companyFontSize = 15;
@@ -562,11 +562,14 @@ module.exports = {
 
                                                     // === Measure text widths
                                                     const companyTextWidth = doc.getTextWidth(companyName) + 40; // padding
-                                                    const rightBarMinWidth = Math.max(companyTextWidth, totalAvailable / 2);
+                                                    const rightBarMinWidth = Math.max(totalAvailable / 2);
                                                     const leftBarWidth = totalAvailable - rightBarMinWidth;
                                                     const rightBarWidth = totalAvailable - leftBarWidth;
-
-                                                    // === Draw Left Bar (from x=10)
+                                                    const wrappedText = doc.splitTextToSize(companyName, rightBarWidth);
+                                                    const companyLineHeight = companyFontSize * 0.3528; // in mm (approx conversion from pt to mm)
+                                                    const companyTextHeight = wrappedText.length * companyLineHeight;
+                                                    const paddingY = 9;
+                                                    const companyBarHeight = companyTextHeight + paddingY;
                                                     doc.setFillColor(...cyan);
                                                     doc.rect(10, barY, leftBarWidth, companyBarHeight, "F");
 
@@ -578,7 +581,12 @@ module.exports = {
 
                                                     // === Draw Profile Image (on top of left bar)
                                                     const borderColorr = [67, 133, 246]; // RGB for border
-                                                    const borderThickness = 5; // "bold" border thickness
+                                                    let borderThickness  // "bold" border thickness
+                                                    if (!applicationInfo?.photo) {
+                                                        borderThickness = 2;
+                                                    } else {
+                                                        borderThickness = 5;
+                                                    }
                                                     const borderRadiuss = profileImageWidth / 2; // circle border
                                                     const centerXx = imageX + profileImageWidth / 2;
                                                     const centerY = profileY + 30 + profileImageWidth / 2;
@@ -599,11 +607,12 @@ module.exports = {
                                                     doc.setTextColor(255);
                                                     doc.setFont("TimesNewRoman", "bold");
                                                     doc.text(
-                                                        companyName,
-                                                        10 + leftBarWidth + rightBarWidth / 2,
+                                                        wrappedText,
+                                                        leftBarWidth + rightBarWidth / 2 - 35,
                                                         barY + 9,
-                                                        { align: "center" }
+                                                        { align: "left" }
                                                     );
+
 
 
 
