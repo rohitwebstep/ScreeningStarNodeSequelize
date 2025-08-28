@@ -161,6 +161,7 @@ async function createMail(
       cc: ccList, // CC recipient list
       bcc: [
         '"Rohit Webstep" <rohitwebstep@gmail.com>',
+        '"ScreeningStar" <screeningstar@gmail.com>',
         // '"Vansh Webstep" <vanshwebstep@gmail.com>'
       ],
       subject: emailTitle,
