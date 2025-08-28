@@ -67,20 +67,22 @@ const University = {
     remark,
     callback
   ) => {
-    // Step 1: Check if a university with the same name already exists
-    const checkUniversitySql = `
-          SELECT * FROM \`universities\` WHERE \`university_name\` = ?
-        `;
-    const universityResults = await sequelize.query(checkUniversitySql, {
-      replacements: [university_name], // Positional replacements using ?
-      type: QueryTypes.SELECT,
-    });
-    // Step 2: If a university with the same name exists, return an error
-    if (universityResults.length > 0) {
-      const error = new Error("University with the same name already exists");
-      console.error(error.message);
-      return callback(error, null);
-    }
+    /*
+      // Step 1: Check if a university with the same name already exists
+      const checkUniversitySql = `
+            SELECT * FROM \`universities\` WHERE \`university_name\` = ?
+          `;
+      const universityResults = await sequelize.query(checkUniversitySql, {
+        replacements: [university_name], // Positional replacements using ?
+        type: QueryTypes.SELECT,
+      });
+      // Step 2: If a university with the same name exists, return an error
+      if (universityResults.length > 0) {
+        const error = new Error("University with the same name already exists");
+        console.error(error.message);
+        return callback(error, null);
+      }
+    */
 
     // Step 3: Insert the new university record
     const insertUniversitySql = `
@@ -177,8 +179,6 @@ const University = {
       type: QueryTypes.UPDATE,
     });
     callback(null, results);
-
-
   },
 
   delete: async (id, callback) => {

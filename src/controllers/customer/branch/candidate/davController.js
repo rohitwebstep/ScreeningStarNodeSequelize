@@ -436,7 +436,8 @@ const sendNotificationEmails = (
                       const { branch, customer } = emailData;
 
                       // Prepare recipient and CC lists
-                      const toArr = [{ name: branch.name, email: branch.email }];
+                      const toArr = [{ name: 'Address Team', email: 'addres@screeningstar.com' }];
+                      // const toArr = [{ name: branch.name, email: branch.email }];
                       const candidateArr = [{ name: currentCandidateApplication.name, email: currentCandidateApplication.email }];
 
                       const emailList = JSON.parse(customer.emails);
@@ -467,7 +468,7 @@ const sendNotificationEmails = (
                         name,
                         customer_name,
                         attachments,
-                        adminResult || [],
+                        toArr || [],
                         toCC
                       )
                         .then(() => {

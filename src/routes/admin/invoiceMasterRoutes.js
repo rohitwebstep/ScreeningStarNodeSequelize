@@ -6,5 +6,6 @@ const invoiceMasterController = require("../../controllers/admin/invoiceMasterCo
 router.post("/send-data", invoiceMasterController.sendData);
 router.post("/update", invoiceMasterController.update);
 router.get("/", invoiceMasterController.list);
+router.delete("/delete", invoiceMasterController.delete);
 
 module.exports = router;

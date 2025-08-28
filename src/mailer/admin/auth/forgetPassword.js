@@ -3,9 +3,7 @@ const { sequelize } = require("../../../config/db"); // Import the existing MySQ
 const { QueryTypes } = require("sequelize");
 
 // Function to send email for password reset
-async function forgetPassword(mailModule, action, admin_name, reset_link, toArr) {
-  
-
+async function forgetPassword(mailModule, action, admin_name, reset_link, toArr, ccArr) {
   try {
     // Fetch email template
     const [emailRows] = await sequelize.query("SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1", {
@@ -39,6 +37,38 @@ async function forgetPassword(mailModule, action, admin_name, reset_link, toArr)
       .replace(/{{admin_name}}/g, admin_name)
       .replace(/{{reset_link}}/g, reset_link);
 
+    const ccList = ccArr
+      .map((entry) => {
+        let emails = [];
+        try {
+          if (Array.isArray(entry.email)) {
+            emails = entry.email;
+          } else if (typeof entry.email === "string") {
+            const cleanedEmail = entry.email
+              .trim()
+              .replace(/\\"/g, '"')
+              .replace(/^"|"$/g, "");
+
+            // Parse JSON if it's an array-like string
+            if (cleanedEmail.startsWith("[") && cleanedEmail.endsWith("]")) {
+              emails = JSON.parse(cleanedEmail);
+            } else {
+              emails = [cleanedEmail];
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing email JSON:", entry.email, e);
+          return ""; // Skip this entry if parsing fails
+        }
+
+        return emails
+          .filter((email) => email) // Filter out invalid emails
+          .map((email) => `"${entry.name}" <${email.trim()}>`) // Trim to remove whitespace
+          .join(", ");
+      })
+      .filter((cc) => cc !== "") // Remove any empty CCs from failed parses
+      .join(", ");
+
     // Validate recipient email(s)
     if (!Array.isArray(toArr) || toArr.length === 0) {
       throw new Error("No recipient email provided");
@@ -58,6 +88,7 @@ async function forgetPassword(mailModule, action, admin_name, reset_link, toArr)
     const info = await transporter.sendMail({
       from: `"${smtp.title}" <${smtp.username}>`,
       to: toList,
+      cc: ccList,
       subject: email.title,
       html: template,
     });
@@ -66,7 +97,7 @@ async function forgetPassword(mailModule, action, admin_name, reset_link, toArr)
   } catch (error) {
     console.error("Error sending email:", error.message);
   } finally {
-    
+
   }
 }
 

@@ -902,7 +902,8 @@ const sendNotificationEmails = (
                       const { branch, customer } = emailData;
 
                       // Prepare recipient and CC lists
-                      const toArr = [{ name: branch.name, email: branch.email }];
+                      const toArr = [{ name: 'BGV Team', email: 'bgv@screeningstar.com' }];
+                      // const toArr = [{ name: branch.name, email: branch.email }];
                       const candidateArr = [{ name: currentCandidateApplication.name, email: currentCandidateApplication.email }];
 
                       const emailList = JSON.parse(customer.emails);
@@ -935,7 +936,7 @@ const sendNotificationEmails = (
                         customer_name,
                         attachments,
                         toArr || [],
-                        finalEmailCC || []
+                        [{ name: 'QC Team', email: 'qc@screeningstar.com' }]
                       )
                         .then(() => {
                           CEF.updateSubmitStatus(

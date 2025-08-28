@@ -196,8 +196,8 @@ const ReportMaster = {
       WHERE 
         ca.is_deleted != 1
         AND cust.is_deleted != 1
-        AND cmt.component_status = 1`; console.log("SQL query prepared.");
-
+        AND cmt.component_status = 1`;
+        console.log("SQL query prepared.");
 
       const results = await sequelize.query(sql, {
         type: QueryTypes.SELECT,

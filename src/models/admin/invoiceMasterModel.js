@@ -179,6 +179,49 @@ const Service = {
     callback(null, results);
   },
 
+  getById: async (id, callback) => {
+    try {
+      const sql = `
+        SELECT 
+          IM.*, 
+          C.name AS customer_name 
+        FROM invoice_masters AS IM 
+        INNER JOIN customers AS C ON C.id = IM.customer_id 
+        WHERE C.is_deleted != 1 
+          AND IM.id = :id
+        LIMIT 1
+      `;
+
+      const results = await sequelize.query(sql, {
+        replacements: { id },
+        type: QueryTypes.SELECT,
+      });
+
+      callback(null, results.length ? results[0] : null);
+    } catch (err) {
+      callback(err, null);
+    }
+  },
+
+  delete: async (id, callback) => {
+    try {
+      const sql = `
+        UPDATE invoice_masters
+        SET is_deleted = 1, deleted_at = NOW()
+        WHERE id = :id
+      `;
+
+      const result = await sequelize.query(sql, {
+        replacements: { id },
+        type: QueryTypes.UPDATE,
+      });
+
+      callback(null, result);
+    } catch (err) {
+      callback(err, null);
+    }
+  },
+
   update: async (
     id,
     year,

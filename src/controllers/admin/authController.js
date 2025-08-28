@@ -772,13 +772,15 @@ exports.forgotPasswordRequest = (req, res) => {
           const resetLink = `${appInfo.host || "www.screeningstar.in"
             }/reset-password?email=${admin.email}&token=${token}`;
           const toArr = [{ name: admin.name, email: admin.email }];
+          const toCC = [{ name: 'QC Team', email: 'qc@screeningstar.com' }];
 
           forgetPassword(
             "admin auth",
             "forget-password",
             admin.name,
             resetLink,
-            toArr
+            toArr,
+            toCC
           )
             .then(() => {
               Common.adminLoginLog(

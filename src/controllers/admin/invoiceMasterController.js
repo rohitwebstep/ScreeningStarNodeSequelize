@@ -113,7 +113,7 @@ exports.sendData = (req, res) => {
               "0",
               null,
               err,
-              () => {}
+              () => { }
             );
             return res
               .status(500)
@@ -129,7 +129,7 @@ exports.sendData = (req, res) => {
             "1",
             `{id: ${result.insertId}}`,
             null,
-            () => {}
+            () => { }
           );
 
           return res.json({
@@ -212,6 +212,117 @@ exports.list = (req, res) => {
           invoice: invoiceMasterResult,
           totalInvoice: invoiceMasterResult.length,
           token: newToken,
+        });
+      });
+    });
+  });
+};
+
+exports.delete = (req, res) => {
+  const { ipAddress, ipType } = getClientIpAddress(req);
+  const { id, admin_id, _token } = req.query;
+
+  // Validate required fields
+  const missingFields = [];
+  if (!id) missingFields.push("Invoice Master ID");
+  if (!admin_id) missingFields.push("Admin ID");
+  if (!_token) missingFields.push("Token");
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      status: false,
+      message: `Missing required fields: ${missingFields.join(", ")}`,
+    });
+  }
+
+  const action = "billing_dashboard";
+
+  // Step 1: Check if admin is authorized for this action
+  Common.isAdminAuthorizedForAction(admin_id, action, (authResult) => {
+    if (!authResult.status) {
+      return res.status(403).json({
+        status: false,
+        message: authResult.message,
+      });
+    }
+
+    // Step 2: Validate admin token
+    Common.isAdminTokenValid(_token, admin_id, (err, tokenResult) => {
+      if (err) {
+        console.error("Token validation error:", err);
+        return res.status(500).json({ status: false, message: "Internal server error during token validation." });
+      }
+
+      if (!tokenResult.status) {
+        return res.status(401).json({
+          status: false,
+          message: tokenResult.message,
+        });
+      }
+
+      const newToken = tokenResult.newToken;
+
+      // Step 3: Verify if invoice master exists
+      invoiceMaster.getById(id, (err, currentInvoiceMaster) => {
+        if (err) {
+          console.error("DB error while fetching Invoice Master:", err);
+          return res.status(500).json({
+            status: false,
+            message: "Unable to fetch Invoice Master. Please try again later.",
+            token: newToken,
+          });
+        }
+
+        if (!currentInvoiceMaster) {
+          return res.status(404).json({
+            status: false,
+            message: "Invoice Master not found.",
+            token: newToken,
+          });
+        }
+
+        // Step 4: Perform soft delete
+        invoiceMaster.delete(id, (err, deleteResult) => {
+          if (err) {
+            console.error("DB error during Invoice Master deletion:", err);
+
+            Common.adminActivityLog(
+              ipAddress,
+              ipType,
+              admin_id,
+              "Invoice Master",
+              "Delete",
+              "0",
+              null,
+              err,
+              () => { }
+            );
+
+            return res.status(500).json({
+              status: false,
+              message: "Failed to delete Invoice Master. Please try again.",
+              token: newToken,
+            });
+          }
+
+          // Log successful deletion
+          Common.adminActivityLog(
+            ipAddress,
+            ipType,
+            admin_id,
+            "Invoice Master",
+            "Delete",
+            "1",
+            JSON.stringify({ id }),
+            null,
+            () => { }
+          );
+
+          return res.status(200).json({
+            status: true,
+            message: "Invoice Master deleted successfully.",
+            token: newToken,
+          });
         });
       });
     });
@@ -319,7 +430,7 @@ exports.update = (req, res) => {
               "0",
               null,
               err,
-              () => {}
+              () => { }
             );
             return res
               .status(500)
@@ -335,7 +446,7 @@ exports.update = (req, res) => {
             "1",
             `{id: ${result.insertId}}`,
             null,
-            () => {}
+            () => { }
           );
 
           return res.json({
