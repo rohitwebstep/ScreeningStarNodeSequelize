@@ -384,6 +384,7 @@ exports.response = (req, res) => {
                 const leaveDate = new Date(currentPersonalManager.from_date);
                 const currentDate = new Date();
 
+                /*
                 // Compare leave date with current date
                 if (leaveDate <= currentDate) {
                     return res.status(400).json({
@@ -392,6 +393,7 @@ exports.response = (req, res) => {
                             "This leave request is no longer available for response as the specified leave date has already passed or is today.",
                     });
                 }
+                */
 
                 Common.isAdminTokenValid(_token, admin_id, (err, result) => {
                     if (err) {
