@@ -405,8 +405,6 @@ const clientApplication = {
   },
 
   update: async (data, client_application_id, callback) => {
-
-
     const {
       name,
       generate_report_type,
@@ -428,6 +426,7 @@ const clientApplication = {
       UPDATE \`client_applications\`
       SET
         \`name\` = ?,
+        \`generate_report_type\` = ?,
         \`employee_id\` = ?,
         \`client_spoc_name\` = ?,
         \`location\` = ?,
@@ -465,6 +464,7 @@ const clientApplication = {
 
     const values = [
       name,
+      generate_report_type,
       employee_id,
       client_spoc_name,
       location,
