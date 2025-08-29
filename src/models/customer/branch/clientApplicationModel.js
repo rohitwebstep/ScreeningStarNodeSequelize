@@ -80,6 +80,7 @@ const clientApplication = {
     try {
       const {
         name,
+        generate_report_type,
         employee_id,
         client_spoc_name,
         location,
@@ -122,6 +123,7 @@ const clientApplication = {
             INSERT INTO \`client_applications\` (
               \`application_id\`,
               \`name\`,
+              \`generate_report_type\`,
               \`employee_id\`,
               \`client_spoc_name\`,
               \`location\`,
@@ -136,12 +138,13 @@ const clientApplication = {
               \`sub_client\`,
               \`ticket_id\`,
               \`gender\`
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
 
           const values = [
             new_application_id || null,
             name || null,
+            generate_report_type|| null,
             employee_id || null,
             client_spoc_name || null,
             location || null,
@@ -176,7 +179,6 @@ const clientApplication = {
       callback(error);
     }
   },
-
 
   list: async (branch_id, callback) => {
 
@@ -407,6 +409,7 @@ const clientApplication = {
 
     const {
       name,
+      generate_report_type,
       employee_id,
       client_spoc_name,
       location,

@@ -48,6 +48,7 @@ exports.create = (req, res) => {
     batch_no,
     sub_client,
     ticket_id,
+    generate_report_type,
     is_priority,
   } = req.body;
 
@@ -57,6 +58,7 @@ exports.create = (req, res) => {
     _token,
     customer_id,
     name,
+    generate_report_type
   };
 
   const isPriority = ["1", 1, "Yes", "yes"].includes(String(is_priority).trim())
@@ -126,6 +128,7 @@ exports.create = (req, res) => {
           ClientApplication.create(
             {
               name,
+              generate_report_type,
               employee_id,
               client_spoc_name,
               location,
@@ -932,6 +935,7 @@ exports.update = (req, res) => {
     _token,
     customer_id,
     name,
+    generate_report_type,
     employee_id,
     client_spoc_name,
     location,
@@ -953,6 +957,7 @@ exports.update = (req, res) => {
     _token,
     customer_id,
     name,
+    generate_report_type
   };
 
   // Check for missing fields
@@ -1027,6 +1032,9 @@ exports.update = (req, res) => {
             if (currentClientApplication.name !== name) {
               changes.name = { old: currentClientApplication.name, new: name };
             }
+            if (currentClientApplication.generate_report_type !== generate_report_type) {
+              changes.generate_report_type = { old: currentClientApplication.generate_report_type, new: generate_report_type };
+            }
             if (currentClientApplication.employee_id !== employee_id) {
               changes.employee_id = {
                 old: currentClientApplication.employee_id,
@@ -1090,6 +1098,7 @@ exports.update = (req, res) => {
                 ClientApplication.update(
                   {
                     name,
+                    generate_report_type,
                     employee_id,
                     client_spoc_name,
                     location,
