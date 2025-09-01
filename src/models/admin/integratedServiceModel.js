@@ -1,15 +1,15 @@
 const { sequelize } = require("../../config/db");
 const { QueryTypes } = require("sequelize");
 const Service = {
-  create: async (type, data, admin_id, callback) => {
+  create: async (type, data, export_format, admin_id, callback) => {
     try {
       const insertServiceSql = `
-      INSERT INTO \`integration_services\` (\`type\`, \`data\`)
-      VALUES (?, ?)
+      INSERT INTO \`integration_services\` (\`type\`, \`data\`, \`export_format\`)
+      VALUES (?, ?, ?)
     `;
 
       const results = await sequelize.query(insertServiceSql, {
-        replacements: [type, data], // Positional replacements
+        replacements: [type, data, export_format], // Positional replacements
         type: QueryTypes.INSERT,
       });
 
@@ -46,15 +46,16 @@ const Service = {
     id,
     type,
     data,
+    export_format,
     callback
   ) => {
     const sql = `
       UPDATE \`integration_services\`
-      SET \`type\` = ?, \`data\` = ?
+      SET \`type\` = ?, \`data\` = ?, \`export_format\` = ?
       WHERE \`id\` = ?
     `;
     const results = await sequelize.query(sql, {
-      replacements: [type, data, id], // Positional replacements using ?
+      replacements: [type, data, export_format, id], // Positional replacements using ?
       type: QueryTypes.UPDATE,
     });
     callback(null, results);

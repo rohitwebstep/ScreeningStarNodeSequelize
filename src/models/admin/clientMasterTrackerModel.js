@@ -719,6 +719,9 @@ const Customer = {
             resolve(headBranchResults[0]["COUNT(*)"]);
           }
         );
+
+        const currentMonthStats = await this.getCurrentMonthStats(result.customer_id);
+        result.currentMonthStats = currentMonthStats;
         result.head_branch_applications_count = headBranchApplicationsCount;
         // if (result.branch_count === 1) {
         // Query client_spoc table to fetch names for these IDs
@@ -784,8 +787,48 @@ const Customer = {
     });
 
     callback(null, results);
+  },
 
+  getCurrentMonthStats: async (customerId) => {
+    try {
+      const slugs = [
+        'wip',
+        'insuff',
+        'completed',
+        'completed_green',
+        'completed_red',
+        'completed_yellow',
+        'completed_pink',
+        'completed_orange'
+      ];
 
+      const results = {};
+
+      for (const slug of slugs) {
+        const sql = `
+        SELECT COUNT(*) AS count
+        FROM client_applications ca
+        INNER JOIN branches b ON ca.branch_id = b.id
+        WHERE b.customer_id = ?
+          AND ca.is_deleted != 1
+          AND ca.is_data_qc = 1
+          AND ca.status = ?
+          AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+          AND YEAR(ca.created_at) = YEAR(CURRENT_DATE());
+      `;
+
+        const [row] = await sequelize.query(sql, {
+          replacements: [customerId, slug],
+          type: QueryTypes.SELECT,
+        });
+
+        results[`${slug}_count`] = row.count || 0;
+      }
+
+      return results;
+    } catch (err) {
+      throw err;
+    }
   },
 
   applicationListByBranch: async (

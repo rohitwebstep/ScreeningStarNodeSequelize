@@ -8,6 +8,7 @@ exports.create = (req, res) => {
 
     const {
         type,
+        export_format,
         data,
         admin_id,
         _token,
@@ -16,6 +17,7 @@ exports.create = (req, res) => {
     let missingFields = [];
     if (!type || type === "") missingFields.push("Type");
     if (!data || data === "") missingFields.push("Data");
+    if (!export_format || export_format === "") missingFields.push("Export Format");
     if (!admin_id || admin_id === "") missingFields.push("Admin ID");
     if (!_token || _token === "") missingFields.push("Token");
 
@@ -48,7 +50,7 @@ exports.create = (req, res) => {
 
             const newToken = result.newToken;
 
-            IntegratedService.create(type, data, admin_id, (err, result) => {
+            IntegratedService.create(type, data, export_format, admin_id, (err, result) => {
                 if (err) {
                     console.error("Database error:", err);
 
@@ -91,6 +93,7 @@ exports.create = (req, res) => {
                         id: result[0],
                         type,
                         data,
+                        export_format
                     },
                     token: newToken,
                 });
@@ -224,6 +227,7 @@ exports.update = (req, res) => {
         id,
         type,
         data,
+        export_format,
         admin_id,
         _token,
     } = req.body;
@@ -231,6 +235,7 @@ exports.update = (req, res) => {
     let missingFields = [];
     if (!id || id === "") missingFields.push("IntegratedService ID");
     if (!data || data === "") missingFields.push("Data");
+    if (!export_format || export_format === "") missingFields.push("Export Format");
     if (!type || type === "") missingFields.push("Type");
     if (!admin_id || admin_id === "") missingFields.push("Admin ID");
     if (!_token || _token === "") missingFields.push("Token");
@@ -280,10 +285,18 @@ exports.update = (req, res) => {
                     };
                 }
 
+                if (currentIntegratedService.export_format !== export_format) {
+                    changes.export_format = {
+                        old: currentIntegratedService.export_format,
+                        new: export_format,
+                    };
+                }
+
                 IntegratedService.update(
                     id,
                     type,
                     data,
+                    export_format,
                     (err, result) => {
                         if (err) {
                             console.error("Database error:", err);
