@@ -484,7 +484,7 @@ const Customer = {
         }
       }
 
-      /*
+      
       const finalSql = `WITH BranchesCTE AS (
                             SELECT
                                 b.id AS branch_id,
@@ -561,8 +561,8 @@ const Customer = {
                         ORDER BY
                             application_counts.latest_application_date DESC;
                         `;
-      */
-
+      
+      /*
       const finalSql = `WITH BranchesCTE AS (
                             SELECT
                                 b.id AS branch_id,
@@ -669,6 +669,7 @@ const Customer = {
                         ORDER BY
                             application_counts.latest_application_date DESC;
                         `;
+      */
 
       console.log(`finalSql - `, finalSql);
       const results = await sequelize.query(finalSql, {
@@ -678,16 +679,16 @@ const Customer = {
 
       // Process each result to fetch client_spoc names
       for (const result of results) {
-        /*
+        
         const headBranchApplicationsCountQuery = `
           SELECT COUNT(*)
           FROM \`client_applications\` ca
           INNER JOIN \`branches\` b ON ca.branch_id = b.id
           WHERE ca.customer_id = ?
             AND b.customer_id = ?
-            AND b.is_head = ?`;\
-        */
+            AND b.is_head = ?`;
 
+        /*
         const headBranchApplicationsCountQuery = `
           SELECT COUNT(*)
           FROM \`client_applications\` ca
@@ -709,6 +710,7 @@ const Customer = {
             AND ca.customer_id = ?
             AND b.customer_id = ?
             AND b.is_head = ?`;
+        */
 
         const headBranchApplicationsCount = await new Promise(
           async (resolve, reject) => {
