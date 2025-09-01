@@ -720,8 +720,8 @@ const Customer = {
           }
         );
 
-        const currentMonthStats = await this.getCurrentMonthStats(result.customer_id);
-        result.currentMonthStats = currentMonthStats;
+        // const currentMonthStats = await this.getCurrentMonthStats(result.customer_id);
+        // result.currentMonthStats = currentMonthStats;
         result.head_branch_applications_count = headBranchApplicationsCount;
         // if (result.branch_count === 1) {
         // Query client_spoc table to fetch names for these IDs
