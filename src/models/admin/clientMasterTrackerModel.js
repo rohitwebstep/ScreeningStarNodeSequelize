@@ -163,6 +163,59 @@ function evaluateTatProgress(startDate, tatDays = 0, holidayDates = [], weekends
   }
 }
 
+async function getCurrentMonthStats(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("Customer ID is required.");
+    }
+
+    const slugs = [
+      "wip",
+      "insuff",
+      "completed",
+      "completed_green",
+      "completed_red",
+      "completed_yellow",
+      "completed_pink",
+      "completed_orange",
+    ];
+
+    const results = {};
+
+    for (const slug of slugs) {
+      const sql = `
+        SELECT COUNT(*) AS count
+        FROM client_applications ca
+        INNER JOIN branches b ON ca.branch_id = b.id
+        WHERE b.customer_id = ?
+          AND ca.is_deleted != 1
+          AND ca.is_data_qc = 1
+          AND ca.status = ?
+          AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+          AND YEAR(ca.created_at) = YEAR(CURRENT_DATE());
+      `;
+
+      const [row] = await sequelize.query(sql, {
+        replacements: [customerId, slug],
+        type: QueryTypes.SELECT,
+      });
+
+      results[`${slug}_count`] = row?.count || 0;
+    }
+
+    return {
+      status: true,
+      message: "Monthly application statistics fetched successfully.",
+      data: results,
+    };
+  } catch (err) {
+    return {
+      status: false,
+      message: err.message || "Unexpected error occurred.",
+    };
+  }
+}
+
 const Customer = {
   list: async (filter_status, callback) => {
     try {
@@ -677,7 +730,7 @@ const Customer = {
 
       // Process each result to fetch client_spoc names
       for (const result of results) {
-        
+
         /*
         const headBranchApplicationsCountQuery = `
           SELECT COUNT(*)
@@ -687,7 +740,7 @@ const Customer = {
             AND b.customer_id = ?
             AND b.is_head = ?`;
         */
-        
+
         const headBranchApplicationsCountQuery = `
           SELECT COUNT(*)
           FROM \`client_applications\` ca
@@ -720,8 +773,11 @@ const Customer = {
           }
         );
 
-        // const currentMonthStats = await this.getCurrentMonthStats(result.customer_id);
-        // result.currentMonthStats = currentMonthStats;
+        const currentMonthStats = await getCurrentMonthStats(result.main_id);
+        result.currentMonthStats = currentMonthStats?.data && Object.keys(currentMonthStats.data).length > 0
+          ? currentMonthStats.data
+          : {};
+
         result.head_branch_applications_count = headBranchApplicationsCount;
         // if (result.branch_count === 1) {
         // Query client_spoc table to fetch names for these IDs
