@@ -142,7 +142,7 @@ async function getServiceNames(serviceIds) {
 
 // Controller to list all customers
 exports.recordTracker = async (req, res) => {
-  const { customer_id, month, year, admin_id, _token } = req.query; // Renamed for clarity
+  const { customer_id, from_month, to_month, from_year, to_year, admin_id, _token } = req.query; // Renamed for clarity
 
   // Check for missing required fields
   const missingFields = [];
@@ -155,16 +155,20 @@ exports.recordTracker = async (req, res) => {
     missingFields.push("Customer ID");
   }
 
-  if (!month || month === "" || month === undefined || month === "undefined") {
-    missingFields.push("Invoice Month");
+  if (!from_month || from_month === "" || from_month === undefined || from_month === "undefined") {
+    missingFields.push("Invoice From Month");
   }
 
-  if (!year || year === "" || year === undefined || year === "undefined") {
-    missingFields.push("Invoice Year");
+  if (!to_month || to_month === "" || to_month === undefined || to_month === "undefined") {
+    missingFields.push("Invoice To Month");
   }
 
-  if (!year || year === "" || year === undefined || year === "undefined") {
-    missingFields.push("Invoice Year");
+  if (!from_year || from_year === "" || from_year === undefined || from_year === "undefined") {
+    missingFields.push("Invoice From Year");
+  }
+
+  if (!to_year || to_year === "" || to_year === undefined || to_year === "undefined") {
+    missingFields.push("Invoice To Year");
   }
 
   if (
@@ -230,8 +234,10 @@ exports.recordTracker = async (req, res) => {
           // Fetch customer information and applications
           recordTrackerModel.recordTracker(
             customer_id,
-            month,
-            year,
+            from_month,
+            to_month,
+            from_year,
+            to_year,
             async (err, results) => {
               if (err) {
                 console.error("Database error:", err);
@@ -293,7 +299,7 @@ exports.recordTracker = async (req, res) => {
 };
 
 exports.list = (req, res) => {
-  const { admin_id, _token, month, year ,from_month , from_year , to_month, to_year} = req.query;
+  const { admin_id, _token, month, year, from_month, from_year, to_month, to_year } = req.query;
 
   let missingFields = [];
 
@@ -304,7 +310,7 @@ exports.list = (req, res) => {
   if (!from_year || from_year === "" || from_year === undefined || from_year === "undefined") {
     missingFields.push("Invoice From Year");
   }
-  
+
   if (!to_month || to_month === "" || to_month === undefined || to_month === "undefined") {
     missingFields.push("Invoice To Month");
   }

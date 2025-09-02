@@ -7,9 +7,11 @@ const hashPassword = (password) =>
   crypto.createHash("md5").update(password).digest("hex");
 
 const recordTrackerModel = {
-  recordTracker: async (customerId, month, year, callback) => {
+  recordTracker: async (customerId, from_month,
+    to_month,
+    from_year,
+    to_year, callback) => {
     // Start connection to the database
-
 
     // Select only necessary customer details
     const customerQuery = `
@@ -38,7 +40,6 @@ const recordTrackerModel = {
     });
 
     if (customerResults.length === 0) {
-
       return callback(new Error("Customer not found."), null);
     }
 
@@ -94,13 +95,13 @@ const recordTrackerModel = {
             WHERE 
               ca.status IN ('completed', 'closed', 'complete') 
               AND ca.customer_id = ?
-              AND MONTH(cmt.report_date) = ?
-              AND YEAR(cmt.report_date) = ? 
+              AND MONTH(cmt.report_date) BETWEEN ? AND ?
+              AND YEAR(cmt.report_date) BETWEEN ? AND ?
               AND ca.is_deleted != 1
             ORDER BY ca.branch_id;
           `;
         const applicationResults = await sequelize.query(applicationQuery, {
-          replacements: [customerId, month, year], // Positional replacements using ?
+          replacements: [customerId, from_month, to_month, from_year, to_year], // Positional replacements using ?
           type: QueryTypes.SELECT,
         });
 
@@ -263,8 +264,6 @@ const recordTrackerModel = {
     };
 
     updateServiceTitles();
-
-
   },
 
   list: async (from_month, from_year, to_month, to_year, callback) => {
