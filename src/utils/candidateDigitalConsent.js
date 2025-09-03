@@ -9,7 +9,7 @@ module.exports = {
   ) => {
     return new Promise((resolve, reject) => {
       try {
-        const doc = new jsPDF();
+        const doc = new jsPDF({ compress: true });
         let marginLeft = 10;
         let marginTop = 20;
         let lineHeight = 10;

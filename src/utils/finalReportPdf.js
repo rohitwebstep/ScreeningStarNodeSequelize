@@ -445,7 +445,7 @@ module.exports = {
                                                 const appHost = appInfo.host || "www.example.com";
                                                 const appName = appInfo.name || "Example Company";
                                                 try {
-                                                    const doc = new jsPDF();
+                                                    const doc = new jsPDF({ compress: true });
                                                     const pageWidth = doc.internal.pageSize.getWidth();
                                                     const pageHeight = doc.internal.pageSize.getHeight();
                                                     // RGB for #F3FBFD

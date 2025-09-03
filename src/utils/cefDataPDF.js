@@ -182,7 +182,7 @@ module.exports = {
                     name: "INDIVIDUAL",
                   };
 
-                  const doc = new jsPDF();
+                  const doc = new jsPDF({ compress: true });
                   doc.setTextColor(0, 0, 0); // Set global text color to black
 
                   // Title centered
