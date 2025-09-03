@@ -206,14 +206,13 @@ const Service = {
   delete: async (id, callback) => {
     try {
       const sql = `
-        UPDATE invoice_masters
-        SET is_deleted = 1, deleted_at = NOW()
-        WHERE id = :id
-      `;
+      DELETE FROM invoice_masters
+      WHERE id = :id
+    `;
 
       const result = await sequelize.query(sql, {
         replacements: { id },
-        type: QueryTypes.UPDATE,
+        type: QueryTypes.DELETE, // <-- use DELETE instead of UPDATE
       });
 
       callback(null, result);
