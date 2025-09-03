@@ -1700,6 +1700,7 @@ exports.generateReport = (req, res) => {
                                           { name: 'Bgv Team', email: 'bgv@screeningstar.com' },
                                           { name: 'Manjunath', email: 'manjunath@screeningstar.com' },
                                           { name: 'QC Team', email: 'qc@screeningstar.com' },
+                                          { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' },
                                           ...ccArr,
                                         ];
 
