@@ -302,6 +302,7 @@ exports.delete = (req, res) => {
               status: false,
               message: "Failed to delete Invoice Master. Please try again.",
               token: newToken,
+              error: err
             });
           }
 
