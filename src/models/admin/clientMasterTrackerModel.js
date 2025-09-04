@@ -169,44 +169,35 @@ async function getCurrentMonthStats(customerId) {
       throw new Error("Customer ID is required.");
     }
 
-    const slugs = [
-      "wip",
-      "insuff",
-      "completed",
-      "completed_green",
-      "completed_red",
-      "completed_yellow",
-      "completed_pink",
-      "completed_orange",
-    ];
+    const sql = `
+      SELECT 
+        SUM(CASE WHEN ca.status = 'wip' THEN 1 ELSE 0 END) AS wip_count,
+        SUM(CASE WHEN ca.status = 'insuff' THEN 1 ELSE 0 END) AS insuff_count,
+        SUM(CASE WHEN ca.status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
+        SUM(CASE WHEN ca.status = 'completed_green' THEN 1 ELSE 0 END) AS completed_green_count,
+        SUM(CASE WHEN ca.status = 'completed_red' THEN 1 ELSE 0 END) AS completed_red_count,
+        SUM(CASE WHEN ca.status = 'completed_yellow' THEN 1 ELSE 0 END) AS completed_yellow_count,
+        SUM(CASE WHEN ca.status = 'completed_pink' THEN 1 ELSE 0 END) AS completed_pink_count,
+        SUM(CASE WHEN ca.status = 'completed_orange' THEN 1 ELSE 0 END) AS completed_orange_count,
+        COUNT(*) AS total_count
+      FROM client_applications ca
+      INNER JOIN branches b ON ca.branch_id = b.id
+      WHERE b.customer_id = ?
+        AND ca.is_deleted != 1
+        AND ca.is_data_qc = 1
+        AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE());
+    `;
 
-    const results = {};
-
-    for (const slug of slugs) {
-      const sql = `
-        SELECT COUNT(*) AS count
-        FROM client_applications ca
-        INNER JOIN branches b ON ca.branch_id = b.id
-        WHERE b.customer_id = ?
-          AND ca.is_deleted != 1
-          AND ca.is_data_qc = 1
-          AND ca.status = ?
-          AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-          AND YEAR(ca.created_at) = YEAR(CURRENT_DATE());
-      `;
-
-      const [row] = await sequelize.query(sql, {
-        replacements: [customerId, slug],
-        type: QueryTypes.SELECT,
-      });
-
-      results[`${slug}_count`] = row?.count || 0;
-    }
+    const [row] = await sequelize.query(sql, {
+      replacements: [customerId],
+      type: QueryTypes.SELECT,
+    });
 
     return {
       status: true,
       message: "Monthly application statistics fetched successfully.",
-      data: results,
+      data: row || {},
     };
   } catch (err) {
     return {
