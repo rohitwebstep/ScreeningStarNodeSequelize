@@ -75,7 +75,6 @@ const recordTrackerModel = {
         console.error("Error updating service titles:", err);
       } finally {
 
-
         customerData.services = JSON.stringify(servicesData);
         const applicationQuery = `
             SELECT

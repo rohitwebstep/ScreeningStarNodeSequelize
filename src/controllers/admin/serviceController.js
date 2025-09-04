@@ -73,7 +73,7 @@ exports.create = (req, res) => {
               "0",
               null,
               err,
-              () => {}
+              () => { }
             );
             return res
               .status(500)
@@ -87,17 +87,44 @@ exports.create = (req, res) => {
             "Service",
             "Create",
             "1",
-            `{id: ${result.insertId}}`,
+            `{id: ${result[0]}}`,
             null,
-            () => {}
+            () => { }
           );
 
-          res.json({
-            status: true,
-            message: "Service created successfully",
-            service: result,
-            token: newToken,
-          });
+          console.log(`result - `, result);
+
+          Service.createReportForm(
+            result[0],
+            admin_id,
+            title,
+            (err, reportFormRes) => {
+              if (err) {
+                console.error("Database error:", err);
+                Common.adminActivityLog(
+                  ipAddress,
+                  ipType,
+                  admin_id,
+                  "Service",
+                  "Create",
+                  "0",
+                  null,
+                  err,
+                  () => { }
+                );
+                return res
+                  .status(500)
+                  .json({ status: false, message: err.message, token: newToken });
+              }
+
+              res.json({
+                status: true,
+                message: "Service created successfully",
+                service: result,
+                token: newToken,
+              });
+            }
+          );
         }
       );
     });
@@ -394,7 +421,7 @@ exports.update = (req, res) => {
                 "0",
                 JSON.stringify({ id, ...changes }),
                 err,
-                () => {}
+                () => { }
               );
               return res
                 .status(500)
@@ -410,7 +437,7 @@ exports.update = (req, res) => {
               "1",
               JSON.stringify({ id, ...changes }),
               null,
-              () => {}
+              () => { }
             );
 
             return res.json({
@@ -486,7 +513,7 @@ exports.delete = (req, res) => {
               "0",
               JSON.stringify({ id, ...currentService }),
               err,
-              () => {}
+              () => { }
             );
             return res
               .status(500)
@@ -502,7 +529,7 @@ exports.delete = (req, res) => {
             "1",
             JSON.stringify(currentService),
             null,
-            () => {}
+            () => { }
           );
 
           return res.json({
