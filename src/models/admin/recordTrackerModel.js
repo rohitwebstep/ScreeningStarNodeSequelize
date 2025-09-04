@@ -89,6 +89,7 @@ const recordTrackerModel = {
               ca.created_at,
               ca.check_id,
               ca.ticket_id,
+              ca.sub_client,
               cmt.report_date
             FROM 
               client_applications ca
