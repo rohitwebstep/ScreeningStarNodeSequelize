@@ -71,10 +71,30 @@ const tatDelay = {
 
       const applicationHierarchy = applicationResults.reduce((acc, row) => {
         const {
-          customer_id, customer_name, customer_emails, customer_unique_id,
-          customer_mobile, tat_days, branch_id, branch_name, branch_email,
-          branch_mobile, client_application_id, application_id,
-          application_name, application_created_at
+          customer_id,
+          customer_name,
+          customer_emails,
+          customer_unique_id,
+          customer_mobile,
+          tat_days,
+          branch_id,
+          branch_name,
+          branch_email,
+          branch_mobile,
+          client_application_id,
+          application_id,
+          application_name,
+          application_created_at,
+          first_insufficiency_marks,
+          first_insuff_date,
+          first_insuff_reopened_date,
+          second_insufficiency_marks,
+          second_insuff_date,
+          second_insuff_reopened_date,
+          third_insufficiency_marks,
+          third_insuff_date,
+          third_insuff_reopened_date,
+          delay_reason,
         } = row;
 
         const tatDays = parseInt(tat_days, 10) || 0;
@@ -99,8 +119,21 @@ const tatDelay = {
 
         if (daysOutOfTat > 0) {
           acc[customer_id].branches[branch_id].applications.push({
-            client_application_id, application_id, application_name,
-            application_created_at, days_out_of_tat: daysOutOfTat
+            client_application_id,
+            application_id,
+            application_name,
+            application_created_at,
+            days_out_of_tat: daysOutOfTat,
+            first_insufficiency_marks,
+            first_insuff_date,
+            first_insuff_reopened_date,
+            second_insufficiency_marks,
+            second_insuff_date,
+            second_insuff_reopened_date,
+            third_insufficiency_marks,
+            third_insuff_date,
+            third_insuff_reopened_date,
+            delay_reason,
           });
         }
 
