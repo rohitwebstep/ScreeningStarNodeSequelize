@@ -208,10 +208,10 @@ exports.listWithoutAuth = (req, res) => {
 exports.delete = (req, res) => {
   const { ipAddress, ipType } = getClientIpAddress(req);
 
-  const { customer_id, admin_id, _token } = req.query;
+  const { client_application_id, admin_id, _token } = req.query;
 
   // Validate required fields
-  const requiredFields = { customer_id, admin_id, _token };
+  const requiredFields = { client_application_id, admin_id, _token };
   const missingFields = Object.keys(requiredFields)
     .filter((field) => !requiredFields[field])
     .map((field) => field.replace(/_/g, " "));
@@ -256,7 +256,7 @@ exports.delete = (req, res) => {
       const newToken = result.newToken;
 
       // Delete the customer from the TAT delay list
-      tatDelay.delete(customer_id, (err, result) => {
+      tatDelay.delete(client_application_id, (err, result) => {
         if (err) {
           console.error(
             "Database error during deletion from the TAT delay list:",
@@ -269,7 +269,7 @@ exports.delete = (req, res) => {
             "TAT Delay",
             "Delete",
             "0",
-            JSON.stringify({ customer_id }),
+            JSON.stringify({ client_application_id }),
             err.message,
             () => { }
           );
@@ -289,7 +289,7 @@ exports.delete = (req, res) => {
           "TAT Delay",
           "Delete",
           "1",
-          JSON.stringify({ customer_id }),
+          JSON.stringify({ client_application_id }),
           null,
           () => { }
         );

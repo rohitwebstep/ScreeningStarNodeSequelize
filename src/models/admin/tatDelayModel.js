@@ -186,21 +186,17 @@ const tatDelay = {
     }
   },
 
-  delete: async (customer_id, callback) => {
-
-
+  delete: async (client_application_id, callback) => {
     const sql = `
         UPDATE \`client_applications\`
         SET \`tat_delete\` = ?
-        WHERE \`customer_id\` = ?
+        WHERE \`id\` = ?
       `;
     const results = await sequelize.query(sql, {
-      replacements: [1, customer_id], // Positional replacements using ?
+      replacements: [1, client_application_id], // Positional replacements using ?
       type: QueryTypes.UPDATE,
     });
     callback(null, results);
-
-
   },
 
   deleteApplication: async (application_id, customer_id, callback) => {
@@ -214,9 +210,6 @@ const tatDelay = {
       type: QueryTypes.UPDATE,
     });
     callback(null, results);
-
-
-
   },
 };
 
