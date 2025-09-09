@@ -107,6 +107,12 @@ const ReportMaster = {
                 `Table ${dbTable} does not exist. Status set to "INITIATED".`
               );
             } else {
+              if (!dbTable) {
+                // If no table found in json, mark as INITIATED
+                statuses[dbTableHeading] = "INITIATED";
+                console.warn(`⚠️ No db_table found for service ${serviceId}, set status to INITIATED.`);
+                continue;
+              }
 
               const existingStatusResults = await sequelize.query(`SELECT status FROM ${dbTable} WHERE client_application_id = ?`, {
                 replacements: [row.client_application_id], // Positional replacements using ?
@@ -197,7 +203,7 @@ const ReportMaster = {
         ca.is_deleted != 1
         AND cust.is_deleted != 1
         AND cmt.component_status = 1`;
-        console.log("SQL query prepared.");
+      console.log("SQL query prepared.");
 
       const results = await sequelize.query(sql, {
         type: QueryTypes.SELECT,
