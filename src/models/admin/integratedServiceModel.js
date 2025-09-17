@@ -21,10 +21,11 @@ const Service = {
 
   list: async (callback) => {
     const sql = `
-      SELECT 
-        *
-      FROM \`integration_services\`
-    `;
+    SELECT 
+      *
+    FROM \`integration_services\`
+    ORDER BY created_at DESC
+  `;
 
     const results = await sequelize.query(sql, {
       type: QueryTypes.SELECT,

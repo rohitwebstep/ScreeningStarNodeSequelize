@@ -207,6 +207,82 @@ async function getCurrentMonthStats(customerId) {
   }
 }
 
+async function reportFormJsonWithannexureData(client_application_id, service_id, callback) {
+  try {
+    // Step 1: Fetch JSON from report_forms
+    const reportFormQuery = "SELECT `json` FROM `report_forms` WHERE `service_id` = ?";
+    const reportFormResults = await sequelize.query(reportFormQuery, {
+      replacements: [service_id],
+      type: QueryTypes.SELECT,
+    });
+
+    const reportFormJson = reportFormResults[0] || null;
+
+    // If no JSON, return early with empty annexureData
+    if (!reportFormJson) {
+      return callback(null, { reportFormJson });
+    }
+
+    const parsedData = JSON.parse(reportFormJson.json);
+    const db_table = parsedData.db_table.replace(/-/g, "_");
+    const heading = parsedData.heading;
+
+    // Step 2: Check if the db_table exists
+    const checkTableSql = `
+        SELECT COUNT(*) AS count 
+        FROM information_schema.tables 
+        WHERE table_schema = DATABASE() 
+        AND table_name = ?`;
+
+    const tableCheckResults = await sequelize.query(checkTableSql, {
+      replacements: [db_table],
+      type: QueryTypes.SELECT,
+    });
+
+    const tableExists = tableCheckResults[0].count > 0;
+
+    // Step 3: If table does not exist, create it
+    if (!tableExists) {
+      const createTableSql = `
+          CREATE TABLE \`${db_table}\` (
+            \`id\` BIGINT(20) NOT NULL AUTO_INCREMENT,
+            \`cmt_id\` BIGINT(20) DEFAULT NULL,
+            \`client_application_id\` BIGINT(20) NOT NULL,
+            \`branch_id\` INT(11) NOT NULL,
+            \`customer_id\` INT(11) NOT NULL,
+            \`status\` VARCHAR(100) DEFAULT NULL,
+            \`team_management_docs\` LONGTEXT DEFAULT NULL,
+            \`created_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+            \`updated_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (\`id\`),
+            KEY \`client_application_id\` (\`client_application_id\`),
+            KEY \`cmt_application_customer_id\` (\`customer_id\`),
+            KEY \`cmt_application_cmt_id\` (\`cmt_id\`),
+            CONSTRAINT \`fk_${db_table}_client_application_id\` FOREIGN KEY (\`client_application_id\`) REFERENCES \`client_applications\` (\`id\`) ON DELETE CASCADE,
+            CONSTRAINT \`fk_${db_table}_customer_id\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
+            CONSTRAINT \`fk_${db_table}_cmt_id\` FOREIGN KEY (\`cmt_id\`) REFERENCES \`cmt_applications\` (\`id\`) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `;
+      await sequelize.query(createTableSql);
+      return callback(null, { reportFormJson, annexureData: null });
+    }
+
+    // Step 4: If table exists, fetch data
+    const dataQuery = `SELECT * FROM \`${db_table}\` WHERE \`client_application_id\` = ?`;
+    const dataResults = await sequelize.query(dataQuery, {
+      replacements: [client_application_id],
+      type: QueryTypes.SELECT,
+    });
+
+    const annexureData = dataResults[0] || null;
+    return callback(null, { reportFormJson, annexureData });
+
+  } catch (error) {
+    console.error("Error in annexureData:", error);
+    return callback(error);
+  }
+}
+
 const Customer = {
   list: async (filter_status, callback) => {
     try {
@@ -1014,7 +1090,6 @@ const Customer = {
         results.map(async (result, index) => {
           // console.log(`Processing result index ${index} with ID: ${result.id}`);
           let report_completed_status = null;
-
           const createdAtMoment = moment(result.created_at);
           const tatDays = parseInt(result.tat_days || 0, 10);
 
@@ -1042,13 +1117,77 @@ const Customer = {
             weekendsSet
           );
 
-          return {
-            ...result,
-            created_at: new Date(result.created_at).toISOString(),
+          // Make sure the enclosing function is async so `await` works.
+          const originalResult = result; // avoid shadowing
+          const rawServiceIds = (originalResult.services || "")
+            .split(",")
+            .map(id => id.trim())
+            .filter(Boolean);
+
+          const annexureResults = [];
+
+          if (rawServiceIds.length === 0) {
+            return {
+              ...originalResult,
+              created_at: originalResult?.created_at
+                ? new Date(originalResult.created_at).toISOString()
+                : new Date().toISOString(),
+              new_deadline_date: newDeadlineDate,
+              tat_days: actualCalendarDays,
+              report_completed_status,
+              annexureResults,
+            };
+          }
+
+          // Process serially
+          for (const [index, serviceId] of rawServiceIds.entries()) {
+
+            try {
+              // Wrap the callback function in a Promise so we can await it
+              const annexureRes = await new Promise((resolve, reject) => {
+                reportFormJsonWithannexureData(
+                  originalResult.id,
+                  serviceId,
+                  (err, res) => {
+                    if (err) return reject(err);
+                    resolve(res);
+                  }
+                );
+              });
+
+              const { reportFormJson, annexureData } = annexureRes || {};
+
+              annexureResults.push({
+                service_id: serviceId,
+                annexureStatus: annexureData ? true : false,
+                serviceStatus: true,
+                reportFormJson,
+                annexureData,
+              });
+
+            } catch (err) {
+              annexureResults.push({
+                service_id: serviceId,
+                annexureStatus: false,
+                serviceStatus: false,
+                message: err?.message || String(err),
+              });
+            }
+          }
+
+          // All done — return final response
+          const finalResponse = {
+            ...originalResult,
+            created_at: originalResult?.created_at
+              ? new Date(originalResult.created_at).toISOString()
+              : new Date().toISOString(),
             new_deadline_date: newDeadlineDate,
             tat_days: actualCalendarDays,
-            report_completed_status
+            report_completed_status,
+            annexureResults,
           };
+          return finalResponse;
+
         })
       );
 
