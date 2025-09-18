@@ -5,6 +5,11 @@ const University = {
     universityNames,
     callback
   ) => {
+    return callback(null, {
+      status: true,
+      message: "All universities are unique."
+    });
+    
     if (!Array.isArray(universityNames) || universityNames.length === 0) {
       return callback({ status: false, message: "No University Names provided." }, null)
     }

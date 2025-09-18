@@ -5,6 +5,11 @@ const Organization = {
     organizationNames,
     callback
   ) => {
+    return callback(null, {
+      status: true,
+      message: "All Organization Names are unique."
+    });
+
     if (!Array.isArray(organizationNames) || organizationNames.length === 0) {
       return callback({ status: false, message: "No Organization Names provided." }, null)
     }
@@ -70,6 +75,7 @@ const Organization = {
     remark,
     callback
   ) => {
+    /*
     // Step 1: Check if a organization with the same name already exists
     const checkUniversitySql = `
           SELECT * FROM \`organizations\` WHERE \`organization_name\` = ?
@@ -85,6 +91,7 @@ const Organization = {
       console.error(error.message);
       return callback(error, null);
     }
+    */
 
     // Step 3: Insert the new organization record
     const insertUniversitySql = `

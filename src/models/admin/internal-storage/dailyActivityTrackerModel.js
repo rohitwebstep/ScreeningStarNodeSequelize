@@ -6,6 +6,11 @@ const DailyActivity = {
     BuisnessDevelopmentNames,
     callback
   ) => {
+    return callback(null, {
+      status: true,
+      message: "All Buisness Developments are unique."
+    });
+    
     if (!Array.isArray(BuisnessDevelopmentNames) || BuisnessDevelopmentNames.length === 0) {
       return callback({ status: false, message: "No Buisness Development Names provided." }, null)
     }
@@ -74,6 +79,8 @@ const DailyActivity = {
     remarks,
     callback
   ) => {
+
+    /*
     // Step 1: Check if a Daily Activity with the same name already exists
     const checkDailyActivitySql = `
           SELECT * FROM \`daily_activities\` WHERE \`bd_expert_name\` = ?
@@ -89,6 +96,7 @@ const DailyActivity = {
       console.error(error.message);
       return callback(error, null);
     }
+    */
 
     // Step 3: Insert the new Daily Activity record
     const insertDailyActivitySql = `

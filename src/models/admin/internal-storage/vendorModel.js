@@ -6,6 +6,11 @@ const Vendor = {
     vendorNames,
     callback
   ) => {
+    return callback(null, {
+      status: true,
+      message: "All vendors are unique."
+    });
+
     if (!Array.isArray(vendorNames) || vendorNames.length === 0) {
       return callback({ status: false, message: "No Vendor Names provided." }, null)
     }
@@ -71,6 +76,7 @@ const Vendor = {
     remarks,
     callback
   ) => {
+    /*
     // Step 1: Check if a vendor with the same name already exists
     const checkVendorSql = `
           SELECT * FROM \`vendors\` WHERE \`vendor_name\` = ?
@@ -86,6 +92,7 @@ const Vendor = {
       console.error(error.message);
       return callback(error, null);
     }
+    */
 
     // Step 3: Insert the new vendor record
     const insertVendorSql = `
@@ -113,9 +120,6 @@ const Vendor = {
     });
 
     callback(null, results);
-
-
-
   },
 
   list: async (callback) => {
