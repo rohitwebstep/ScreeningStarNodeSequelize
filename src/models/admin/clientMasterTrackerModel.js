@@ -1702,6 +1702,7 @@ const Customer = {
 
     let filterOptions = {
       overallCount: 0,
+      qcStatusPendingCount: 0,
       wipCount: 0,
       insuffCount: 0,
       completedGreenCount: 0,
@@ -1735,6 +1736,14 @@ const Customer = {
 
     let conditions = {
       overallCount: `AND ${commonCondition} AND (b.overall_status='wip' OR b.overall_status='insuff' OR b.overall_status='initiated' OR b.overall_status='hold' OR b.overall_status='closure advice' OR b.overall_status='stopcheck' OR b.overall_status='active employment' OR b.overall_status='nil' OR b.overall_status='' OR b.overall_status='not doable' OR b.overall_status='candidate denied' OR (b.overall_status='completed' AND b.report_date LIKE '%-${month}-%') OR (b.overall_status='completed' AND b.report_date NOT LIKE '%-${month}-%'))`,
+      qcStatusPendingCount: `AND ${commonCondition} AND (
+            b.overall_status = 'wip'
+            OR b.overall_status = 'insuff'
+            OR (b.overall_status = 'completed' 
+              AND b.final_verification_status IN ('GREEN', 'RED', 'YELLOW', 'PINK', 'ORANGE')
+              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
+            )
+          )`,
       wipCount: `AND ${commonCondition} AND (b.overall_status = 'wip')`,
       insuffCount: `AND ${commonCondition} AND (b.overall_status = 'insuff')`,
       completedGreenCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='GREEN'`,
@@ -1793,7 +1802,6 @@ const Customer = {
       .catch((err) => {
         callback(err, null);
       });
-
   },
 
   filterOptionsForBranch: async (branch_id, callback) => {
