@@ -199,8 +199,9 @@ const ReportMaster = {
       LEFT JOIN cmt_applications AS cmt ON ca.id = cmt.client_application_id
       LEFT JOIN admins AS ad_report ON ad_report.id = cmt.report_generate_by
       LEFT JOIN admins AS ad_qc ON ad_qc.id = cmt.qc_done_by
-      WHERE 
+      WHERE
         ca.is_deleted != 1
+        AND ca.status NOT IN ('stopcheck','hold')
         AND cust.is_deleted != 1
         AND cmt.component_status = 1`;
       console.log("SQL query prepared.");

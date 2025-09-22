@@ -735,6 +735,7 @@ const Customer = {
                                         AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                                     )
                                 )
+                                AND ca.status NOT IN ('stopcheck','hold')
                                 ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
@@ -826,6 +827,7 @@ const Customer = {
                     AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                 )
             )
+            AND ca.status NOT IN ('stopcheck','hold')
             AND ca.customer_id = ?
             AND b.customer_id = ?
             AND b.is_head = ?`;
