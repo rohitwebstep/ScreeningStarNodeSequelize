@@ -1505,6 +1505,7 @@ const Customer = {
     const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
 
+    /*
     const commonCondition = `(
                                     (
                                         MONTH(a.created_at) = MONTH(CURRENT_DATE())
@@ -1517,6 +1518,10 @@ const Customer = {
                                         AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                                     )
                                 )`;
+    */
+   
+    const commonCondition = ``;
+
     let filterOptions = {
       overallCount: 0,
       qcStatusPendingCount: 0,
@@ -1723,6 +1728,7 @@ const Customer = {
       closureAdviceCount: 0,
     };
 
+    /*
     const commonCondition = `(
                                     (
                                         MONTH(a.created_at) = MONTH(CURRENT_DATE())
@@ -1735,7 +1741,9 @@ const Customer = {
                                         AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                                     )
                                 )`;
+    */
 
+    const commonCondition = ``;
     let conditions = {
       overallCount: `AND ${commonCondition} AND (b.overall_status='wip' OR b.overall_status='insuff' OR b.overall_status='initiated' OR b.overall_status='hold' OR b.overall_status='closure advice' OR b.overall_status='stopcheck' OR b.overall_status='active employment' OR b.overall_status='nil' OR b.overall_status='' OR b.overall_status='not doable' OR b.overall_status='candidate denied' OR (b.overall_status='completed' AND b.report_date LIKE '%-${month}-%') OR (b.overall_status='completed' AND b.report_date NOT LIKE '%-${month}-%'))`,
       qcStatusPendingCount: `AND ${commonCondition} AND a.is_report_downloaded='1' AND LOWER(b.is_verify)='no' AND a.status='completed'`,
@@ -1822,6 +1830,7 @@ const Customer = {
       completedOrangeCount: 0,
     };
 
+    /*
     const commonCondition = `(
                                     (
                                         MONTH(a.created_at) = MONTH(CURRENT_DATE())
@@ -1834,6 +1843,9 @@ const Customer = {
                                         AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                                     )
                                 )`;
+    */
+
+    const commonCondition = ``;
 
     const overallCountSQL = `
          SELECT
