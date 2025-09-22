@@ -50,6 +50,7 @@ const tatDelay = {
                 OR 
                 (cmt.id IS NOT NULL AND (cmt.overall_status != 'completed' OR cmt.overall_status IS NULL))
             )
+            AND ca.status NOT IN ('stopcheck','hold')
             AND cust.is_deleted != 1
             AND ca.is_deleted != 1
             AND ca.tat_delete != 1;
