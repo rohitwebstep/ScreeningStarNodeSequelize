@@ -304,9 +304,13 @@ exports.create = (req, res) => {
                                         email: admin.email,
                                       })
                                     );
-                                    const toCC = [
+                                    const toNewArr = [
                                       { name: 'BGV Team', email: 'bgv@screeningstar.com' },
+                                    ];
+
+                                    const toNewCC = [
                                       { name: 'QC Team', email: 'qc@screeningstar.com' },
+                                      { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' },
                                     ];
                                     const ccArr1 = customer.emails
                                       .split(",")
@@ -337,8 +341,8 @@ exports.create = (req, res) => {
                                       serviceNames,
                                       newAttachedDocsString,
                                       appHost,
-                                      toCC,
-                                      []
+                                      toNewArr,
+                                      toNewCC
                                     )
                                       .then(() => {
                                         return res.status(201).json({
@@ -1447,9 +1451,13 @@ exports.upload = async (req, res) => {
                                       email: email.trim(),
                                     }));
 
-                                  const toCC = [
+                                  const toNewArr = [
                                     { name: 'BGV Team', email: 'bgv@screeningstar.com' },
+                                  ];
+
+                                  const toNewCC = [
                                     { name: 'QC Team', email: 'qc@screeningstar.com' },
+                                    { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' },
                                   ];
 
                                   const ccArr = [
@@ -1579,8 +1587,8 @@ exports.upload = async (req, res) => {
                                                       serviceNames,
                                                       newAttachedDocsString,
                                                       appHost,
-                                                      toCC,
-                                                      []
+                                                      toNewArr,
+                                                      toNewCC
                                                     );
 
                                                     if (!res.headersSent) {
