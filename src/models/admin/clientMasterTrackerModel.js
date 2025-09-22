@@ -723,6 +723,18 @@ const Customer = {
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
                                 ca.is_deleted != 1
+                                AND (
+                                    (
+                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                                    )
+                                    OR
+                                    (
+                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                        AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
+                                    )
+                                )
                                 AND ca.status NOT IN ('stopcheck','hold')
                                 ${client_application_ids_query_condition}
                             GROUP BY
@@ -754,6 +766,18 @@ const Customer = {
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
                                 ca.is_deleted != 1
+                                AND (
+                                    (
+                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                                    )
+                                    OR
+                                    (
+                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
+                                        AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
+                                    )
+                                )
                                 AND ca.status <> 'completed'
                             GROUP BY
                                 b.customer_id
@@ -791,6 +815,18 @@ const Customer = {
           INNER JOIN \`branches\` b ON ca.branch_id = b.id
           WHERE
             ca.is_deleted != 1
+            AND (
+                (
+                    MONTH(ca.created_at) = MONTH(CURRENT_DATE())
+                    AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
+                )
+                OR
+                (
+                    MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
+                    AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
+                    AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
+                )
+            )
             AND ca.status NOT IN ('stopcheck','hold')
             AND ca.customer_id = ?
             AND b.customer_id = ?
@@ -946,24 +982,18 @@ const Customer = {
       const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
 
-      // const currentMonthReportGeneratedCondition = `AND cmt.report_date LIKE '%-${month}-%'`;
-      const currentMonthReportGeneratedCondition = ``;
-
-      // const currentMonthNotReportGeneratedCondition = `AND cmt.report_date NOT LIKE '%-${month}-%'`;
-      const currentMonthNotReportGeneratedCondition = ``;
-
       // Define SQL conditions for each filter status
       const conditions = {
-        overallCount: `AND cmt.overall_status IN ( 'wip', 'insuff', 'initiated', 'hold', 'closure advice', 'stopcheck', 'active employment', 'nil', '', 'not doable', 'candidate denied') AND c.status = 1`,
+        overallCount: `AND (cmt.overall_status='wip' OR cmt.overall_status='insuff' OR cmt.overall_status='initiated' OR cmt.overall_status='hold' OR cmt.overall_status='closure advice' OR cmt.overall_status='stopcheck' OR cmt.overall_status='active employment' OR cmt.overall_status='nil' OR cmt.overall_status='' OR cmt.overall_status='not doable' OR cmt.overall_status='candidate denied' OR (cmt.overall_status='completed' AND cmt.report_date LIKE '%-${month}-%') OR (cmt.overall_status='completed' AND cmt.report_date NOT LIKE '%-${month}-%')) AND c.status = 1`,
         qcStatusPendingCount: `AND ca.is_report_downloaded = '1' AND LOWER(cmt.is_verify) = 'no' AND ca.status = 'completed'`,
         wipCount: `AND cmt.overall_status = 'wip'`,
         insuffCount: `AND cmt.overall_status = 'insuff'`,
-        completedGreenCount: `AND cmt.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND cmt.final_verification_status = 'GREEN'`,
-        completedRedCount: `AND cmt.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND cmt.final_verification_status = 'RED'`,
-        completedYellowCount: `AND cmt.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND cmt.final_verification_status = 'YELLOW'`,
-        completedPinkCount: `AND cmt.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND cmt.final_verification_status = 'PINK'`,
-        completedOrangeCount: `AND cmt.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND cmt.final_verification_status = 'ORANGE'`,
-        previousCompletedCount: `AND (cmt.overall_status = 'completed' ${currentMonthNotReportGeneratedCondition}) AND c.status=1`,
+        completedGreenCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'GREEN'`,
+        completedRedCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'RED'`,
+        completedYellowCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'YELLOW'`,
+        completedPinkCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'PINK'`,
+        completedOrangeCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'ORANGE'`,
+        previousCompletedCount: `AND (cmt.overall_status = 'completed' AND cmt.report_date NOT LIKE '%-${month}-%') AND c.status=1`,
         stopcheckCount: `AND cmt.overall_status = 'stopcheck'`,
         activeEmploymentCount: `AND cmt.overall_status = 'active employment'`,
         nilCount: `AND cmt.overall_status IN ('nil', '')`,
@@ -1475,7 +1505,6 @@ const Customer = {
     const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
 
-    /*
     const commonCondition = `(
                                     (
                                         MONTH(a.created_at) = MONTH(CURRENT_DATE())
@@ -1488,10 +1517,6 @@ const Customer = {
                                         AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                                     )
                                 )`;
-    */
-
-    const commonCondition = ``;
-
     let filterOptions = {
       overallCount: 0,
       qcStatusPendingCount: 0,
@@ -1519,7 +1544,7 @@ const Customer = {
           JOIN cmt_applications b ON a.id = b.client_application_id 
         WHERE
           ${commonCondition}
-          c.is_deleted != 1
+          AND c.is_deleted != 1
           AND a.is_deleted != 1
           AND (c.status = 1)
           AND (
@@ -1547,7 +1572,7 @@ const Customer = {
             JOIN cmt_applications b ON a.id = b.client_application_id 
           where
             ${commonCondition}
-            a.is_report_downloaded='1'
+            AND a.is_report_downloaded='1'
             AND LOWER(b.is_verify)='no'
             AND a.status='completed'
             AND c.is_deleted != 1
@@ -1574,7 +1599,7 @@ const Customer = {
             JOIN cmt_applications b ON a.id = b.client_application_id 
           WHERE 
             ${commonCondition}
-            c.status = 1
+            AND c.status = 1
             AND b.overall_status IN ('wip', 'insuff')
             AND a.is_deleted != 1
             AND c.is_deleted != 1
@@ -1602,7 +1627,7 @@ const Customer = {
               JOIN cmt_applications b ON a.id = b.client_application_id 
             where
               ${commonCondition}
-              b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
+              AND b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
               AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
               AND c.status=1
               AND a.is_deleted != 1
@@ -1640,7 +1665,7 @@ const Customer = {
                 JOIN cmt_applications b ON a.id = b.client_application_id 
               where
                 ${commonCondition}
-                b.overall_status ='completed'
+                AND b.overall_status ='completed'
                 AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
                 AND b.final_verification_status IN ('GREEN', 'RED', 'YELLOW', 'PINK', 'ORANGE')
                 AND c.status=1
@@ -1698,7 +1723,6 @@ const Customer = {
       closureAdviceCount: 0,
     };
 
-    /*
     const commonCondition = `(
                                     (
                                         MONTH(a.created_at) = MONTH(CURRENT_DATE())
@@ -1711,35 +1735,26 @@ const Customer = {
                                         AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                                     )
                                 )`;
-    */
-
-    const commonCondition = ``;
-
-    // const currentMonthReportGeneratedCondition = `AND b.report_date LIKE '%-${month}-%')`;
-    const currentMonthReportGeneratedCondition = ``;
-
-    // const currentMonthNotReportGeneratedCondition = `AND b.report_date NOT LIKE '%-${month}-%'`;
-    const currentMonthNotReportGeneratedCondition = ``;
 
     let conditions = {
-      overallCount: `AND ${commonCondition} b.overall_status IN ( 'wip', 'insuff', 'initiated', 'hold', 'closure advice', 'stopcheck', 'active employment', 'nil', '', 'not doable', 'candidate denied')`,
-      qcStatusPendingCount: `AND ${commonCondition} a.is_report_downloaded='1' AND LOWER(b.is_verify)='no' AND a.status='completed'`,
-      wipCount: `AND ${commonCondition} (b.overall_status = 'wip')`,
-      insuffCount: `AND ${commonCondition} (b.overall_status = 'insuff')`,
-      completedGreenCount: `AND ${commonCondition} (b.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND b.final_verification_status='GREEN'`,
-      completedRedCount: `AND ${commonCondition} (b.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND b.final_verification_status='RED'`,
-      completedYellowCount: `AND ${commonCondition} (b.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND b.final_verification_status='YELLOW'`,
-      completedPinkCount: `AND ${commonCondition} (b.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND b.final_verification_status='PINK'`,
-      completedOrangeCount: `AND ${commonCondition} (b.overall_status = 'completed' ${currentMonthReportGeneratedCondition} AND b.final_verification_status='ORANGE'`,
-      previousCompletedCount: `AND ${commonCondition} (b.overall_status = 'completed' ${currentMonthNotReportGeneratedCondition})`,
-      stopcheckCount: `AND ${commonCondition} (b.overall_status = 'stopcheck')`,
-      activeEmploymentCount: `AND ${commonCondition} (b.overall_status = 'active employment')`,
-      nilCount: `AND ${commonCondition} (b.overall_status = 'nil' OR b.overall_status = '')`,
-      candidateDeniedCount: `AND ${commonCondition} (b.overall_status = 'candidate denied')`,
-      notDoableCount: `AND ${commonCondition} (b.overall_status = 'not doable')`,
-      initiatedCount: `AND ${commonCondition} (b.overall_status = 'initiated')`,
-      holdCount: `AND ${commonCondition} (b.overall_status = 'hold')`,
-      closureAdviceCount: `AND ${commonCondition} (b.overall_status = 'closure advice')`
+      overallCount: `AND ${commonCondition} AND (b.overall_status='wip' OR b.overall_status='insuff' OR b.overall_status='initiated' OR b.overall_status='hold' OR b.overall_status='closure advice' OR b.overall_status='stopcheck' OR b.overall_status='active employment' OR b.overall_status='nil' OR b.overall_status='' OR b.overall_status='not doable' OR b.overall_status='candidate denied' OR (b.overall_status='completed' AND b.report_date LIKE '%-${month}-%') OR (b.overall_status='completed' AND b.report_date NOT LIKE '%-${month}-%'))`,
+      qcStatusPendingCount: `AND ${commonCondition} AND a.is_report_downloaded='1' AND LOWER(b.is_verify)='no' AND a.status='completed'`,
+      wipCount: `AND ${commonCondition} AND (b.overall_status = 'wip')`,
+      insuffCount: `AND ${commonCondition} AND (b.overall_status = 'insuff')`,
+      completedGreenCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='GREEN'`,
+      completedRedCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='RED'`,
+      completedYellowCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='YELLOW'`,
+      completedPinkCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='PINK'`,
+      completedOrangeCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='ORANGE'`,
+      previousCompletedCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date NOT LIKE '%-${month}-%')`,
+      stopcheckCount: `AND ${commonCondition} AND (b.overall_status = 'stopcheck')`,
+      activeEmploymentCount: `AND ${commonCondition} AND (b.overall_status = 'active employment')`,
+      nilCount: `AND ${commonCondition} AND (b.overall_status = 'nil' OR b.overall_status = '')`,
+      candidateDeniedCount: `AND ${commonCondition} AND (b.overall_status = 'candidate denied')`,
+      notDoableCount: `AND ${commonCondition} AND (b.overall_status = 'not doable')`,
+      initiatedCount: `AND ${commonCondition} AND (b.overall_status = 'initiated')`,
+      holdCount: `AND ${commonCondition} AND (b.overall_status = 'hold')`,
+      closureAdviceCount: `AND ${commonCondition} AND (b.overall_status = 'closure advice')`
     };
 
     let sqlQueries = [];
@@ -1807,7 +1822,6 @@ const Customer = {
       completedOrangeCount: 0,
     };
 
-    /*
     const commonCondition = `(
                                     (
                                         MONTH(a.created_at) = MONTH(CURRENT_DATE())
@@ -1820,9 +1834,6 @@ const Customer = {
                                         AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
                                     )
                                 )`;
-    */
-
-    const commonCondition = ``;
 
     const overallCountSQL = `
          SELECT
@@ -1833,7 +1844,7 @@ const Customer = {
           JOIN cmt_applications b ON a.id = b.client_application_id 
         WHERE
           ${commonCondition}
-          (
+          AND (
             b.overall_status = 'wip'
             OR b.overall_status = 'insuff'
             OR (b.overall_status = 'completed' 
@@ -1864,7 +1875,7 @@ const Customer = {
             JOIN cmt_applications b ON a.id = b.client_application_id 
           where
             ${commonCondition}
-            a.is_report_downloaded='1'
+            AND a.is_report_downloaded='1'
             AND LOWER(b.is_verify)='no'
             AND a.status='completed'
             AND a.is_deleted != 1
@@ -1893,7 +1904,7 @@ const Customer = {
             JOIN cmt_applications b ON a.id = b.client_application_id 
           WHERE 
             ${commonCondition}
-            c.status = 1
+            AND c.status = 1
             AND b.overall_status IN ('wip', 'insuff')
             AND CAST(a.branch_id AS CHAR) = ?
             AND a.is_deleted != 1
@@ -1926,7 +1937,7 @@ const Customer = {
               JOIN cmt_applications b ON a.id = b.client_application_id 
             where
               ${commonCondition}
-              b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
+              AND b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
               AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
               AND c.status=1
               AND CAST(a.branch_id AS CHAR) = ?
@@ -1966,7 +1977,7 @@ const Customer = {
               JOIN cmt_applications b ON a.id = b.client_application_id 
             where
               ${commonCondition}
-              b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
+              AND b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
               AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
               AND c.status=1
               AND CAST(a.branch_id AS CHAR) = ?
