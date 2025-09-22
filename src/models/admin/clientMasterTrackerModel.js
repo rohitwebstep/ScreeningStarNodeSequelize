@@ -723,18 +723,6 @@ const Customer = {
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
                                 ca.is_deleted != 1
-                                AND (
-                                    (
-                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-                                    )
-                                    OR
-                                    (
-                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
-                                    )
-                                )
                                 AND ca.status NOT IN ('stopcheck','hold')
                                 ${client_application_ids_query_condition}
                             GROUP BY
@@ -766,18 +754,6 @@ const Customer = {
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
                                 ca.is_deleted != 1
-                                AND (
-                                    (
-                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-                                    )
-                                    OR
-                                    (
-                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
-                                    )
-                                )
                                 AND ca.status <> 'completed'
                             GROUP BY
                                 b.customer_id
@@ -815,18 +791,6 @@ const Customer = {
           INNER JOIN \`branches\` b ON ca.branch_id = b.id
           WHERE
             ca.is_deleted != 1
-            AND (
-                (
-                    MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                    AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-                )
-                OR
-                (
-                    MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                    AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                    AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
-                )
-            )
             AND ca.status NOT IN ('stopcheck','hold')
             AND ca.customer_id = ?
             AND b.customer_id = ?
