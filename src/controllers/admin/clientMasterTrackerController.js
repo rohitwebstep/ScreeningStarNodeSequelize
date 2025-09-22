@@ -2272,7 +2272,7 @@ exports.generateReport = (req, res) => {
                                                                   if (allMatch) {
                                                                     console.log(`Step 42`);
 
-                                                                    if (send_mail == 0) {
+                                                                    if (send_mail === 0 || mainJson.overall_status.toLowerCase() !== 'completed') {
                                                                       console.log(`Step 43`);
 
                                                                       return res
