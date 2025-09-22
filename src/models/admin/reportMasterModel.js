@@ -201,7 +201,7 @@ const ReportMaster = {
       LEFT JOIN admins AS ad_qc ON ad_qc.id = cmt.qc_done_by
       WHERE
         ca.is_deleted != 1
-        AND ca.status NOT IN ('stopcheck','hold')
+        AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange', 'stopcheck','hold')
         AND cust.is_deleted != 1
         AND cmt.component_status = 1`;
       console.log("SQL query prepared.");
