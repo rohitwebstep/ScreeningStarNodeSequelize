@@ -1736,9 +1736,9 @@ const Customer = {
 
     let conditions = {
       overallCount: `AND ${commonCondition} AND (b.overall_status='wip' OR b.overall_status='insuff' OR b.overall_status='initiated' OR b.overall_status='hold' OR b.overall_status='closure advice' OR b.overall_status='stopcheck' OR b.overall_status='active employment' OR b.overall_status='nil' OR b.overall_status='' OR b.overall_status='not doable' OR b.overall_status='candidate denied' OR (b.overall_status='completed' AND b.report_date LIKE '%-${month}-%') OR (b.overall_status='completed' AND b.report_date NOT LIKE '%-${month}-%'))`,
-      qcStatusPendingCount: `AND ${commonCondition} AND a.is_report_downloaded='1' AND LOWER(b.is_verify)='no' AND a.status='completed'`,
-      wipCount: `AND ${commonCondition} AND (b.overall_status = 'wip')`,
-      insuffCount: `AND ${commonCondition} AND (b.overall_status = 'insuff')`,
+      qcStatusPendingCount: `AND a.is_report_downloaded='1' AND LOWER(b.is_verify)='no' AND a.status='completed'`,
+      wipCount: `AND (b.overall_status = 'wip')`,
+      insuffCount: `AND (b.overall_status = 'insuff')`,
       completedGreenCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='GREEN'`,
       completedRedCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='RED'`,
       completedYellowCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='YELLOW'`,
