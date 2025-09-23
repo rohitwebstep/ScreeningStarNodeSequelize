@@ -1571,8 +1571,7 @@ const Customer = {
             JOIN customers c ON a.customer_id = c.id
             JOIN cmt_applications b ON a.id = b.client_application_id 
           where
-            ${commonCondition}
-            AND a.is_report_downloaded='1'
+            a.is_report_downloaded='1'
             AND LOWER(b.is_verify)='no'
             AND a.status='completed'
             AND c.is_deleted != 1
@@ -1598,8 +1597,7 @@ const Customer = {
             JOIN customers c ON a.customer_id = c.id
             JOIN cmt_applications b ON a.id = b.client_application_id 
           WHERE 
-            ${commonCondition}
-            AND c.status = 1
+            c.status = 1
             AND b.overall_status IN ('wip', 'insuff')
             AND a.is_deleted != 1
             AND c.is_deleted != 1
