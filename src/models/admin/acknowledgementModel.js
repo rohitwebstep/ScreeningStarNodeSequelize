@@ -43,11 +43,11 @@ const Acknowledgement = {
                     \`client_applications\`
                 WHERE 
                     \`ack_sent\` = 0
+                    AND \`is_delete\` != 1
                 GROUP BY 
                     \`branch_id\`, 
                     \`customer_id\`;
             `;
-
 
       const results = await sequelize.query(sql, { type: QueryTypes.SELECT });
 
