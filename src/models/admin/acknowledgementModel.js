@@ -43,7 +43,7 @@ const Acknowledgement = {
                     \`client_applications\`
                 WHERE 
                     \`ack_sent\` = 0
-                    AND \`is_delete\` != 1
+                    AND \`is_deleted\` != 1
                 GROUP BY 
                     \`branch_id\`, 
                     \`customer_id\`;
