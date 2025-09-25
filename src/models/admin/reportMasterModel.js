@@ -34,8 +34,7 @@ const ReportMaster = {
       LEFT JOIN admins AS ad_qc ON ad_qc.id = cmt.qc_done_by
       WHERE 
         ca.is_deleted != 1  
-        AND cust.is_deleted != 1
-        AND cmt.component_status = 0`;
+        AND cust.is_deleted != 1`;
 
       console.log("SQL query prepared.");
 
