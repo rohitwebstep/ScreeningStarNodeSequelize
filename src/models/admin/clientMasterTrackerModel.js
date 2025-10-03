@@ -163,30 +163,121 @@ function evaluateTatProgress(startDate, tatDays = 0, holidayDates = [], weekends
   }
 }
 
-async function getCurrentMonthStats(customerId) {
+async function getCurrentMonthStats(customerId, fromDate, toDate) {
   try {
-    if (!customerId) {
-      throw new Error("Customer ID is required.");
-    }
+    if (!customerId) throw new Error("Customer ID is required.");
+
+    // Validate dates
+    const validFrom = fromDate && !isNaN(new Date(fromDate));
+    const validTo = toDate && !isNaN(new Date(toDate));
+    const dateFilter = (alias) => (validFrom && validTo ? `AND ${alias}.created_at BETWEEN '${fromDate}' AND '${toDate}'` : '');
 
     const sql = `
       SELECT 
-        SUM(CASE WHEN ca.status = 'wip' THEN 1 ELSE 0 END) AS wip_count,
-        SUM(CASE WHEN ca.status = 'insuff' THEN 1 ELSE 0 END) AS insuff_count,
-        SUM(CASE WHEN ca.status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
-        SUM(CASE WHEN ca.status = 'completed_green' THEN 1 ELSE 0 END) AS completed_green_count,
-        SUM(CASE WHEN ca.status = 'completed_red' THEN 1 ELSE 0 END) AS completed_red_count,
-        SUM(CASE WHEN ca.status = 'completed_yellow' THEN 1 ELSE 0 END) AS completed_yellow_count,
-        SUM(CASE WHEN ca.status = 'completed_pink' THEN 1 ELSE 0 END) AS completed_pink_count,
-        SUM(CASE WHEN ca.status = 'completed_orange' THEN 1 ELSE 0 END) AS completed_orange_count,
-        COUNT(*) AS total_count
-      FROM client_applications ca
-      INNER JOIN branches b ON ca.branch_id = b.id
-      WHERE b.customer_id = ?
-        AND ca.is_deleted != 1
-        AND ca.is_data_qc = 1
-        AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE());
+        -- Application count (all branches)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca
+          WHERE ca.customer_id = c.id
+            AND ca.is_deleted != 1
+            AND ca.status NOT IN ('stopcheck','hold')
+            ${dateFilter('ca')}
+        ) AS application_count,
+
+        -- Pending application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca2
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca2.id
+            AND cmt.overall_status <> 'completed'
+          WHERE ca2.customer_id = c.id
+            AND ca2.is_deleted != 1
+            AND ca2.status NOT IN ('stopcheck','hold')
+            ${dateFilter('ca2')}
+        ) AS pending_application_count,
+
+        -- QC Pending (completed but not verified)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca3
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca3.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'no'
+          WHERE ca3.customer_id = c.id
+            AND ca3.is_deleted != 1
+            ${dateFilter('ca3')}
+        ) AS qc_pending_count,
+
+        -- Completed application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca4
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca4.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'yes'
+          WHERE ca4.customer_id = c.id
+            AND ca4.is_deleted != 1
+            ${dateFilter('ca4')}
+        ) AS completed_application_count,
+
+        -- WIP
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca5
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca5.id
+            AND cmt.overall_status = 'wip'
+          WHERE ca5.customer_id = c.id
+            AND ca5.is_deleted != 1
+            ${dateFilter('ca5')}
+        ) AS wip_application_count,
+
+        -- Insuff
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca6
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca6.id
+            AND cmt.overall_status = 'insuff'
+          WHERE ca6.customer_id = c.id
+            AND ca6.is_deleted != 1
+            ${dateFilter('ca6')}
+        ) AS insuff_application_count,
+
+        -- Stopcheck
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca7
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca7.id
+            AND cmt.overall_status = 'stopcheck'
+          WHERE ca7.customer_id = c.id
+            AND ca7.is_deleted != 1
+            ${dateFilter('ca7')}
+        ) AS stopcheck_application_count,
+
+        -- Not doable
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca8
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca8.id
+            AND cmt.overall_status = 'not_doable'
+          WHERE ca8.customer_id = c.id
+            AND ca8.is_deleted != 1
+            ${dateFilter('ca8')}
+        ) AS not_doable_application_count,
+
+        -- Candidate denied
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca9
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca9.id
+            AND cmt.overall_status = 'candidate_denied'
+          WHERE ca9.customer_id = c.id
+            AND ca9.is_deleted != 1
+            ${dateFilter('ca9')}
+        ) AS candidate_denied_application_count
+
+      FROM customers c
+      WHERE c.id = ?
+        AND c.status = 1;
     `;
 
     const [row] = await sequelize.query(sql, {
@@ -286,524 +377,116 @@ async function reportFormJsonWithannexureData(client_application_id, service_id,
 const Customer = {
   list: async (filter_status, callback) => {
     try {
+      // const fromDate = '2025-01-01'; // replace with dynamic input
+      // const toDate = '2025-12-31';   // replace with dynamic input
 
-      let client_application_ids_query_condition = '';
-      let customer_ids_query_condition = '';
+      const fromDate = '';
+      const toDate = '';
 
-      // Get the current date
-      const now = new Date();
-      const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+      // Validate dates
+      const validFrom = fromDate && !isNaN(new Date(fromDate));
+      const validTo = toDate && !isNaN(new Date(toDate));
+      const dateFilter = (alias) => (validFrom && validTo ? `AND ${alias}.created_at BETWEEN '${fromDate}' AND '${toDate}'` : '');
 
-      let customer_ids = [];
-      let client_application_ids = [];
+      const finalSql = `SELECT 
+                            c.id AS main_id,
+                            c.client_unique_id,
+                            c.name,
+                            cm.tat_days,
+                            cm.single_point_of_contact,
 
-      if (filter_status && filter_status !== null && filter_status !== "") {
-        let sql = `SELECT customer_id FROM customers WHERE status = 1`;
+                            -- Branch count
+                            (
+                                SELECT COUNT(*)
+                                FROM branches b
+                                WHERE b.customer_id = c.id
+                            ) AS branch_count,
 
-        switch (filter_status) {
-          case 'overallCount':
-            sql = `
-          SELECT DISTINCT
-            a.id,
-            a.customer_id
-          FROM 
-            client_applications a 
-            JOIN customers c ON a.customer_id = c.id
-            JOIN cmt_applications b ON a.id = b.client_application_id 
-          WHERE
-            (
-              b.overall_status = 'wip'
-              OR b.overall_status = 'insuff'
-              OR (b.overall_status = 'completed' 
-                AND b.final_verification_status IN ('GREEN', 'RED', 'YELLOW', 'PINK', 'ORANGE')
-                AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-              )
-            )
-            AND a.status NOT IN ('stopcheck','hold')
-            AND c.is_deleted != 1
-            AND a.is_deleted != 1
-            AND (c.status = 1)
-    `;
-            break;
-          case 'qcStatusPendingCount':
-            sql = `
-          SELECT DISTINCT
-            a.id,
-            a.customer_id
-          FROM 
-            client_applications a 
-            JOIN customers c ON a.customer_id = c.id
-            JOIN cmt_applications b ON a.id = b.client_application_id
-          where
-            a.is_report_downloaded='1'
-            AND a.status NOT IN ('stopcheck','hold')
-            AND LOWER(b.is_verify)='no'
-            AND a.status='completed'
-            AND c.is_deleted != 1
-            AND a.is_deleted != 1
-          order by 
-            b.id DESC
-      `;
-            break;
-          case 'wipCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    FROM 
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    WHERE 
-                      c.status = 1
-                      AND a.status NOT IN ('stopcheck','hold')
-                      AND b.overall_status = 'wip'
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'insuffCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    FROM 
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    WHERE 
-                      c.status = 1
-                      AND b.overall_status = 'insuff'
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'previousCompletedCount':
-            sql = `
-          SELECT DISTINCT
-            a.id,
-            a.customer_id
-            FROM 
-              client_applications a 
-              JOIN customers c ON a.customer_id = c.id
-              JOIN cmt_applications b ON a.id = b.client_application_id 
-            WHERE
-              b.overall_status IN ('completed')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-              AND c.status=1
-              AND a.is_deleted != 1
-              AND c.is_deleted != 1
-      `;
-            break;
-          case 'stopcheckCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    FROM 
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    WHERE
-                      b.overall_status IN ('stopcheck')
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'activeEmploymentCount':
-            sql = `
-          SELECT DISTINCT
-            a.id,
-            a.customer_id
-            FROM 
-              client_applications a 
-              JOIN customers c ON a.customer_id = c.id
-              JOIN cmt_applications b ON a.id = b.client_application_id 
-            WHERE
-              b.overall_status IN ('active employment')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-              AND c.status=1
-              AND a.is_deleted != 1
-              AND c.is_deleted != 1
-      `;
-            break;
-          case 'nilCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    FROM 
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    WHERE
-                      b.overall_status IN ('nil', '')
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'notDoableCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    FROM 
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    WHERE
-                      b.overall_status IN ('not doable')
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'candidateDeniedCount':
-            sql = `
-          SELECT DISTINCT
-            a.id,
-            a.customer_id
-            FROM 
-              client_applications a 
-              JOIN customers c ON a.customer_id = c.id
-              JOIN cmt_applications b ON a.id = b.client_application_id 
-            WHERE
-              b.overall_status IN ('candidate denied')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-              AND c.status=1
-              AND a.is_deleted != 1
-              AND c.is_deleted != 1
-      `;
-            break;
-          case 'completedGreenCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    from
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    where
-                      b.overall_status ='completed'
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND b.final_verification_status IN ('GREEN')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'completedRedCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    from
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    where
-                      b.overall_status ='completed'
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND b.final_verification_status IN ('RED')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'completedYellowCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    from
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    where
-                      b.overall_status ='completed'
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND b.final_verification_status IN ('YELLOW')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'completedPinkCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    from
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    where
-                       b.overall_status ='completed'
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND b.final_verification_status IN ('PINK')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-          case 'completedOrangeCount':
-            sql = `
-                  SELECT DISTINCT
-                    a.id,
-                    a.customer_id
-                    from
-                      client_applications a 
-                      JOIN customers c ON a.customer_id = c.id
-                      JOIN cmt_applications b ON a.id = b.client_application_id 
-                    where
-                      b.overall_status ='completed'
-                      AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                      AND b.final_verification_status IN ('ORANGE')
-                      AND c.status=1
-                      AND a.is_deleted != 1
-                      AND c.is_deleted != 1
-              `;
-            break;
-        }
+                            -- Application count (all branches)
+                            (
+                                SELECT COUNT(*)
+                                FROM client_applications ca
+                                WHERE ca.customer_id = c.id
+                                  AND ca.is_deleted != 1
+                                  AND ca.status NOT IN ('stopcheck','hold')
+                                  ${dateFilter('ca')}
+                            ) AS application_count,
 
-        console.log(`sql - `, sql);
+                            -- Completed application count
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca2
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca2.id
+                                AND cmt.overall_status = 'completed'
+                                AND cmt.is_verify = 'yes'
+                              WHERE ca2.customer_id = c.id
+                                AND ca2.is_deleted != 1
+                                ${dateFilter('ca2')}
+                            ) AS completed_application_count,
 
-        const results = await sequelize.query(sql, {
-          replacements: [filter_status],
-          type: QueryTypes.SELECT,
-        });
+                            -- Pending application count
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca3
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca3.id
+                                AND cmt.overall_status <> 'completed'
+                              WHERE ca3.customer_id = c.id
+                                AND ca3.is_deleted != 1
+                                AND ca3.status NOT IN ('stopcheck','hold')
+                                ${dateFilter('ca3')}
+                            ) AS pending_application_count,
 
-        console.log(`results - `, results);
+                            -- Head branch id
+                            (
+                                SELECT b.id
+                                FROM branches b
+                                WHERE b.customer_id = c.id
+                                  AND b.is_head = 1
+                                LIMIT 1
+                            ) AS head_branch_id,
 
-        console.log(`results.length - `, results.length);
-        if (results.length === 0) {
-          return callback(null, []);
-        }
+                            -- Head branch applications count
+                            (
+                                SELECT COUNT(*)
+                                FROM client_applications ca4
+                                WHERE ca4.customer_id = c.id
+                                  AND ca4.is_deleted != 1
+                                  AND ca4.status NOT IN ('stopcheck','hold')
+                                  ${dateFilter('ca4')}
+                                  AND ca4.branch_id = (
+                                      SELECT b2.id
+                                      FROM branches b2
+                                      WHERE b2.customer_id = c.id
+                                        AND b2.is_head = 1
+                                      LIMIT 1
+                                  )
+                            ) AS head_branch_applications_count,
 
-        console.log("results - ", results);
-        // Loop through results and push customer_id to the array
-        results.forEach((row) => {
-          client_application_ids.push(row.id);
-          customer_ids.push(row.customer_id);
-        });
+                            -- Latest application date
+                            (
+                                SELECT MAX(ca5.created_at)
+                                FROM client_applications ca5
+                                WHERE ca5.customer_id = c.id
+                                  AND ca5.is_deleted != 1
+                                  ${dateFilter('ca5')}
+                            ) AS latest_application_at
 
-        console.log("client_application_ids - ", client_application_ids);
-        // Generate client_application_ids query condition if the array is not empty
-        if (client_application_ids.length > 0) {
-          client_application_ids_query_condition = `AND ca.id IN (${client_application_ids.join(",")})`;
-        }
-
-        console.log("customer_ids - ", customer_ids);
-        // Generate customer_ids query condition if the array is not empty
-        if (customer_ids.length > 0) {
-          customer_ids_query_condition = `AND customers.id IN (${customer_ids.join(",")})`;
-        }
-      }
-
-      /*
-      const finalSql = `WITH BranchesCTE AS (
-                            SELECT
-                                b.id AS branch_id,
-                                b.customer_id
-                            FROM
-                                branches b
-                        )
-                        SELECT
-                            customers.client_unique_id,
-                            customers.name,
-                            customer_metas.tat_days,
-                            customer_metas.single_point_of_contact,
-                            customers.id AS main_id,
-                            COALESCE(branch_counts.branch_count, 0) AS branch_count,
-                            COALESCE(application_counts.application_count, 0) AS application_count,
-                            COALESCE(completed_counts.completed_count, 0) AS completedApplicationsCount,
-                            COALESCE(pending_counts.pending_count, 0) AS pendingApplicationsCount
-                        FROM
-                            customers
-                        LEFT JOIN
-                            customer_metas ON customers.id = customer_metas.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                customer_id,
-                                COUNT(*) AS branch_count
-                            FROM
-                                branches
-                            GROUP BY
-                                customer_id
-                        ) AS branch_counts ON customers.id = branch_counts.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                b.customer_id,
-                                COUNT(ca.id) AS application_count,
-                                MAX(ca.created_at) AS latest_application_date
-                            FROM
-                                BranchesCTE b
-                            INNER JOIN
-                                client_applications ca ON b.branch_id = ca.branch_id
-                              ${client_application_ids_query_condition}
-                            GROUP BY
-                                b.customer_id
-                        ) AS application_counts ON customers.id = application_counts.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                b.customer_id,
-                                COUNT(ca.id) AS completed_count
-                            FROM
-                                BranchesCTE b
-                            INNER JOIN
-                                client_applications ca ON b.branch_id = ca.branch_id
-                            WHERE
-                                ca.status = 'completed'
-                            GROUP BY
-                                b.customer_id
-                        ) AS completed_counts ON customers.id = completed_counts.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                b.customer_id,
-                                COUNT(ca.id) AS pending_count
-                            FROM
-                                BranchesCTE b
-                            INNER JOIN
-                                client_applications ca ON b.branch_id = ca.branch_id
-                            WHERE
-                                ca.status <> 'completed'
-                            GROUP BY
-                                b.customer_id
-                        ) AS pending_counts ON customers.id = pending_counts.customer_id
-                        WHERE
-                            customers.status = 1
-                            ${customer_ids_query_condition}
-                            AND COALESCE(application_counts.application_count, 0) > 0
-                        ORDER BY
-                            application_counts.latest_application_date DESC;
-                        `;
-      */
-
-                      /*
-                        AND (
-                                    (
-                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-                                    )
-                                    OR
-                                    (
-                                        MONTH(ca.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND YEAR(ca.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND ca.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
-                                    )
-                                )
-                      */
-
-      const finalSql = `WITH BranchesCTE AS (
-                            SELECT
-                                b.id AS branch_id,
-                                b.customer_id
-                            FROM
-                                branches b
-                        )
-                        SELECT
-                            customers.client_unique_id,
-                            customers.name,
-                            customer_metas.tat_days,
-                            customer_metas.single_point_of_contact,
-                            customers.id AS main_id,
-                            COALESCE(branch_counts.branch_count, 0) AS branch_count,
-                            COALESCE(application_counts.application_count, 0) AS application_count,
-                            COALESCE(completed_counts.completed_count, 0) AS completedApplicationsCount,
-                            COALESCE(pending_counts.pending_count, 0) AS pendingApplicationsCount
-                        FROM
-                            customers
-                        LEFT JOIN
-                            customer_metas ON customers.id = customer_metas.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                customer_id,
-                                COUNT(*) AS branch_count
-                            FROM
-                                branches
-                            GROUP BY
-                                customer_id
-                        ) AS branch_counts ON customers.id = branch_counts.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                b.customer_id,
-                                COUNT(ca.id) AS application_count,
-                                MAX(ca.created_at) AS latest_application_date
-                            FROM
-                                BranchesCTE b
-                            INNER JOIN
-                                client_applications ca ON b.branch_id = ca.branch_id
-                            WHERE
-                                ca.is_deleted != 1
-                                AND ca.status NOT IN ('stopcheck','hold')
-                                ${client_application_ids_query_condition}
-                            GROUP BY
-                                b.customer_id
-                        ) AS application_counts ON customers.id = application_counts.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                b.customer_id,
-                                COUNT(ca.id) AS completed_count
-                            FROM
-                                BranchesCTE b
-                            INNER JOIN
-                                client_applications ca ON b.branch_id = ca.branch_id
-                            WHERE
-                                ca.is_deleted != 1
-                                AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-                                AND YEAR(ca.created_at) = YEAR(CURRENT_DATE())
-                                AND ca.status = 'completed'
-                            GROUP BY
-                                b.customer_id
-                        ) AS completed_counts ON customers.id = completed_counts.customer_id
-                        LEFT JOIN (
-                            SELECT
-                                b.customer_id,
-                                COUNT(ca.id) AS pending_count
-                            FROM
-                                BranchesCTE b
-                            INNER JOIN
-                                client_applications ca ON b.branch_id = ca.branch_id
-                            WHERE
-                                ca.is_deleted != 1
-                                AND ca.status <> 'completed'
-                            GROUP BY
-                                b.customer_id
-                        ) AS pending_counts ON customers.id = pending_counts.customer_id
-                        WHERE
-                            customers.status = 1
-                            ${customer_ids_query_condition}
-                            -- AND COALESCE(application_counts.application_count, 0) > 0
-                        ORDER BY
-                            application_counts.latest_application_date DESC;
+                        FROM 
+                            customers c
+                        INNER JOIN 
+                            customer_metas cm ON cm.customer_id = c.id
+                        WHERE 
+                            c.status = 1
+                        ORDER BY 
+                            latest_application_at DESC;
                         `;
 
-      console.log(`finalSql - `, finalSql);
       const results = await sequelize.query(finalSql, {
         type: QueryTypes.SELECT,
       });
-      console.log(`results - `, results);
 
       // Process each result to fetch client_spoc names
       for (const result of results) {
-
-        /*
-        const headBranchApplicationsCountQuery = `
-          SELECT COUNT(*)
-          FROM \`client_applications\` ca
-          INNER JOIN \`branches\` b ON ca.branch_id = b.id
-          WHERE ca.customer_id = ?
-            AND b.customer_id = ?
-            AND b.is_head = ?`;
-        */
-
         const headBranchApplicationsCountQuery = `
           SELECT COUNT(*)
           FROM \`client_applications\` ca
@@ -825,7 +508,7 @@ const Customer = {
           }
         );
 
-        const currentMonthStats = await getCurrentMonthStats(result.main_id);
+        const currentMonthStats = await getCurrentMonthStats(result.main_id, fromDate, toDate);
         result.currentMonthStats = currentMonthStats?.data && Object.keys(currentMonthStats.data).length > 0
           ? currentMonthStats.data
           : {};
@@ -895,48 +578,6 @@ const Customer = {
     });
 
     callback(null, results);
-  },
-
-  getCurrentMonthStats: async (customerId) => {
-    try {
-      const slugs = [
-        'wip',
-        'insuff',
-        'completed',
-        'completed_green',
-        'completed_red',
-        'completed_yellow',
-        'completed_pink',
-        'completed_orange'
-      ];
-
-      const results = {};
-
-      for (const slug of slugs) {
-        const sql = `
-        SELECT COUNT(*) AS count
-        FROM client_applications ca
-        INNER JOIN branches b ON ca.branch_id = b.id
-        WHERE b.customer_id = ?
-          AND ca.is_deleted != 1
-          AND ca.is_data_qc = 1
-          AND ca.status = ?
-          AND MONTH(ca.created_at) = MONTH(CURRENT_DATE())
-          AND YEAR(ca.created_at) = YEAR(CURRENT_DATE());
-      `;
-
-        const [row] = await sequelize.query(sql, {
-          replacements: [customerId, slug],
-          type: QueryTypes.SELECT,
-        });
-
-        results[`${slug}_count`] = row.count || 0;
-      }
-
-      return results;
-    } catch (err) {
-      throw err;
-    }
   },
 
   applicationListByBranch: async (
