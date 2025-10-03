@@ -192,9 +192,29 @@ const tatDelay = {
       const breakTableName = "admin_breaks";
       const adminLoginLogsTableName = "admin_login_logs";
 
-      // Build proper fromDate and toDate
-      const fromDate = new Date(fromYear, fromMonth - 1, 1); // 1st of fromMonth
-      const toDate = new Date(toYear, toMonth, 0); // last day of toMonth
+      console.table({ fromMonth, fromYear, toMonth, toYear });
+
+      // Format date as YYYY-MM-DD
+      const formatDate = (date, type = '') => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0'); // month is 0-indexed
+        const dd = String(date.getDate()).padStart(2, '0');
+
+        if (type === 'start') {
+          return `${yyyy}-${mm}-${dd} 00:00:00`;
+        } else if (type === 'end') {
+          return `${yyyy}-${mm}-${dd} 23:59:59`;
+        }else{
+          return `${yyyy}-${mm}-${dd}`;
+        }
+      };
+
+      // First and last day of month
+      const fromDate = formatDate(new Date(fromYear, fromMonth - 1, 1), 'start'); // 1st day
+      const toDate = formatDate(new Date(toYear, toMonth, 0), 'end');           // last day
+
+      console.log("fromDate -", fromDate); // 2025-09-01
+      console.log("toDate -", toDate);     // 2025-09-30
 
       console.log("Fetching all admins...");
       const admins = await sequelize.query(
@@ -207,12 +227,15 @@ const tatDelay = {
         }
       );
 
+      console.log(`Fetched Admins - `, admins.length);
+
       console.log("Fetching all distinct dates...");
       const datesResult = await sequelize.query(
         `
                                                 SELECT DISTINCT DATE(created_at) AS date
                                                 FROM ${adminLoginLogsTableName}
                                                 WHERE created_at BETWEEN :fromDate AND :toDate
+                                                AND result = '1'
                                                 ORDER BY date DESC
                                               `,
         {
@@ -220,6 +243,9 @@ const tatDelay = {
           type: QueryTypes.SELECT,
         }
       );
+
+      console.log(`Fetched Dates - `, datesResult.length);
+
       const distinctDates = datesResult.map((d) => d.date);
 
       console.log("Fetching all distinct break types...");
@@ -229,7 +255,10 @@ const tatDelay = {
     `,
         { type: QueryTypes.SELECT }
       );
+
       const breakTypes = breakTypesResult.map((t) => t.type);
+
+      console.log(`Fetched BreakTypes - `, breakTypes.length);
 
       console.log("Fetching all login/logout records...");
       const loginLogoutRecords = await sequelize.query(
@@ -237,6 +266,7 @@ const tatDelay = {
                                                       SELECT admin_id, action, created_at, DATE(created_at) AS date
                                                       FROM ${adminLoginLogsTableName}
                                                       WHERE action IN ('login', 'logout')
+                                                      AND result = '1'
                                                       AND created_at BETWEEN :fromDate AND :toDate
                                                     `,
         {
@@ -244,6 +274,11 @@ const tatDelay = {
           type: QueryTypes.SELECT,
         }
       );
+
+      console.log(`fromDate - `, fromDate);
+      console.log(`toDate - `, toDate);
+
+      console.log(`[SQL] loginLogoutRecords - `, loginLogoutRecords);
 
       console.log("Fetching all break records...");
       const breakRecords = await sequelize.query(
@@ -280,23 +315,54 @@ const tatDelay = {
       const loginMap = {};
       for (const log of loginLogoutRecords) {
         const key = `${log.admin_id}_${log.date}`;
-        loginMap[key] = loginMap[key] || { login: null, logout: null };
+        const DEBUG = log.admin_id === 89;
+
+        // Optional debug logs for specific admin
+        if (DEBUG) {
+          console.log(`\n[DEBUG] Processing log:`, log);
+          console.log(`[DEBUG] Generated key:`, key);
+        }
+
+        // Initialize map entry if not exists
+        if (!loginMap[key]) {
+          loginMap[key] = { login: null, logout: null };
+          if (DEBUG) {
+            console.log(`[DEBUG] Initialized loginMap[${key}]:`, loginMap[key]);
+          }
+        }
+
         if (log.action === "login") {
-          if (
-            !loginMap[key].login ||
-            new Date(log.created_at) < new Date(loginMap[key].login)
-          ) {
+          if (DEBUG) {
+            console.log(`[DEBUG] Action is login. Current stored login:`, loginMap[key].login);
+          }
+
+          if (!loginMap[key].login || new Date(log.created_at) < new Date(loginMap[key].login)) {
+            if (DEBUG) {
+              console.log(`[DEBUG] Updating login time from ${loginMap[key].login} to ${log.created_at}`);
+            }
             loginMap[key].login = log.created_at;
           }
         } else if (log.action === "logout") {
-          if (
-            !loginMap[key].logout ||
-            new Date(log.created_at) > new Date(loginMap[key].logout)
-          ) {
+          if (DEBUG) {
+            console.log(`[DEBUG] Action is logout. Current stored logout:`, loginMap[key].logout);
+          }
+
+          if (!loginMap[key].logout || new Date(log.created_at) > new Date(loginMap[key].logout)) {
+            if (DEBUG) {
+              console.log(`[DEBUG] Updating logout time from ${loginMap[key].logout} to ${log.created_at}`);
+            }
             loginMap[key].logout = log.created_at;
           }
         }
+
+        if (DEBUG) {
+          console.log(`[DEBUG] Current loginMap[${key}]:`, loginMap[key]);
+        }
       }
+
+      console.log(`loginMap - `, loginMap);
+
+
 
       const breakMap = {};
       for (const brk of breakRecords) {
@@ -333,6 +399,11 @@ const tatDelay = {
         for (const date of distinctDates) {
           const key = `${admin.admin_id}_${date}`;
           const logData = loginMap[key] || {};
+          console.log(`admin.admin_id - `, admin.admin_id);
+          if (admin.admin_id == 89) {
+            console.log(`key - `, key);
+            console.log(`logData - `, logData);
+          }
           const breakData = breakMap[key] || {};
 
           const breakTimes = {};
@@ -371,6 +442,8 @@ const tatDelay = {
           });
         }
       }
+
+      finalResult.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       console.log("Final result compiled. Total entries:", finalResult.length);
       return callback(null, {
