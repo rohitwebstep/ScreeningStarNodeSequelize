@@ -163,7 +163,7 @@ function evaluateTatProgress(startDate, tatDays = 0, holidayDates = [], weekends
   }
 }
 
-async function getCurrentMonthStats(customerId, fromDate, toDate) {
+async function getSummary(customerId, fromDate, toDate) {
   try {
     if (!customerId) throw new Error("Customer ID is required.");
 
@@ -505,9 +505,9 @@ const Customer = {
           }
         );
 
-        const currentMonthStats = await getCurrentMonthStats(result.main_id, fromDate, toDate);
-        result.currentMonthStats = currentMonthStats?.data && Object.keys(currentMonthStats.data).length > 0
-          ? currentMonthStats.data
+        const summary = await getSummary(result.main_id, fromDate, toDate);
+        result.summary = summary?.data && Object.keys(summary.data).length > 0
+          ? summary.data
           : {};
 
         result.head_branch_applications_count = headBranchApplicationsCount;
@@ -688,7 +688,7 @@ const Customer = {
       }
 
       // Final ordering of results
-      sql += ` ORDER BY ca.\`created_at\` DESC, ca.\`is_highlight\` DESC LIMIT 10`;
+      sql += ` ORDER BY ca.\`created_at\` DESC, ca.\`is_highlight\` DESC`;
       // Execute query
       const results = await sequelize.query(sql, { replacements: params, type: QueryTypes.SELECT });
 
