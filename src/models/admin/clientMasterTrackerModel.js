@@ -401,37 +401,104 @@ const Customer = {
 
                             -- Application count (all branches)
                             (
-                                SELECT COUNT(*)
-                                FROM client_applications ca
-                                WHERE ca.customer_id = c.id
-                                  AND ca.is_deleted != 1
-                                  AND ca.status NOT IN ('stopcheck','hold')
-                                  ${dateFilter('ca')}
-                            ) AS application_count,
-
-                            -- Completed application count
-                            (
                               SELECT COUNT(*)
-                              FROM client_applications ca2
-                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca2.id
-                                AND cmt.overall_status = 'completed'
-                                AND cmt.is_verify = 'yes'
-                              WHERE ca2.customer_id = c.id
-                                AND ca2.is_deleted != 1
-                                ${dateFilter('ca2')}
-                            ) AS completed_application_count,
+                              FROM client_applications ca
+                              WHERE ca.customer_id = c.id
+                                AND ca.is_deleted != 1
+                                AND ca.status NOT IN ('stopcheck','hold')
+                                ${dateFilter('ca')}
+                            ) AS application_count,
 
                             -- Pending application count
                             (
                               SELECT COUNT(*)
+                              FROM client_applications ca2
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca2.id
+                                AND cmt.overall_status <> 'completed'
+                              WHERE ca2.customer_id = c.id
+                                AND ca2.is_deleted != 1
+                                AND ca2.status NOT IN ('stopcheck','hold')
+                                ${dateFilter('ca2')}
+                            ) AS pending_application_count,
+
+                            -- QC Pending (completed but not verified)
+                            (
+                              SELECT COUNT(*)
                               FROM client_applications ca3
                               INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca3.id
-                                AND cmt.overall_status <> 'completed'
+                                AND cmt.overall_status = 'completed'
+                                AND cmt.is_verify = 'no'
                               WHERE ca3.customer_id = c.id
                                 AND ca3.is_deleted != 1
-                                AND ca3.status NOT IN ('stopcheck','hold')
                                 ${dateFilter('ca3')}
-                            ) AS pending_application_count,
+                            ) AS qc_pending_count,
+
+                            -- Completed application count
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca4
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca4.id
+                                AND cmt.overall_status = 'completed'
+                                AND cmt.is_verify = 'yes'
+                              WHERE ca4.customer_id = c.id
+                                AND ca4.is_deleted != 1
+                                ${dateFilter('ca4')}
+                            ) AS completed_application_count,
+
+                            -- WIP
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca5
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca5.id
+                                AND cmt.overall_status = 'wip'
+                              WHERE ca5.customer_id = c.id
+                                AND ca5.is_deleted != 1
+                                ${dateFilter('ca5')}
+                            ) AS wip_application_count,
+
+                            -- Insuff
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca6
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca6.id
+                                AND cmt.overall_status = 'insuff'
+                              WHERE ca6.customer_id = c.id
+                                AND ca6.is_deleted != 1
+                                ${dateFilter('ca6')}
+                            ) AS insuff_application_count,
+
+                            -- Stopcheck
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca7
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca7.id
+                                AND cmt.overall_status = 'stopcheck'
+                              WHERE ca7.customer_id = c.id
+                                AND ca7.is_deleted != 1
+                                ${dateFilter('ca7')}
+                            ) AS stopcheck_application_count,
+
+                            -- Not doable
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca8
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca8.id
+                                AND cmt.overall_status = 'not_doable'
+                              WHERE ca8.customer_id = c.id
+                                AND ca8.is_deleted != 1
+                                ${dateFilter('ca8')}
+                            ) AS not_doable_application_count,
+
+                            -- Candidate denied
+                            (
+                              SELECT COUNT(*)
+                              FROM client_applications ca9
+                              INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca9.id
+                                AND cmt.overall_status = 'candidate_denied'
+                              WHERE ca9.customer_id = c.id
+                                AND ca9.is_deleted != 1
+                                ${dateFilter('ca9')}
+                            ) AS candidate_denied_application_count,
 
                             -- Head branch id
                             (
@@ -445,12 +512,12 @@ const Customer = {
                             -- Head branch applications count
                             (
                                 SELECT COUNT(*)
-                                FROM client_applications ca4
-                                WHERE ca4.customer_id = c.id
-                                  AND ca4.is_deleted != 1
-                                  AND ca4.status NOT IN ('stopcheck','hold')
-                                  ${dateFilter('ca4')}
-                                  AND ca4.branch_id = (
+                                FROM client_applications ca10
+                                WHERE ca10.customer_id = c.id
+                                  AND ca10.is_deleted != 1
+                                  AND ca10.status NOT IN ('stopcheck','hold')
+                                  ${dateFilter('ca10')}
+                                  AND ca10.branch_id = (
                                       SELECT b2.id
                                       FROM branches b2
                                       WHERE b2.customer_id = c.id
@@ -461,11 +528,11 @@ const Customer = {
 
                             -- Latest application date
                             (
-                                SELECT MAX(ca5.created_at)
-                                FROM client_applications ca5
-                                WHERE ca5.customer_id = c.id
-                                  AND ca5.is_deleted != 1
-                                  ${dateFilter('ca5')}
+                                SELECT MAX(ca11.created_at)
+                                FROM client_applications ca11
+                                WHERE ca11.customer_id = c.id
+                                  AND ca11.is_deleted != 1
+                                  ${dateFilter('ca11')}
                             ) AS latest_application_at
 
                         FROM 
