@@ -904,8 +904,9 @@ exports.annexureData = (req, res) => {
 };
 
 exports.customerFilterOption = (req, res) => {
+  const { from, to } = req.query;
 
-  ClientMasterTrackerModel.filterOptionsForCustomers((err, filterOptions) => {
+  ClientMasterTrackerModel.filterOptionsForCustomers(from, to, (err, filterOptions) => {
     if (err) {
       console.error("Database error:", err);
       return res.status(500).json({

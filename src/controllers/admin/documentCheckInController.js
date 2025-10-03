@@ -24,7 +24,7 @@ const { upload, saveImage, saveImages } = require("../../utils/cloudImageSave");
 const { getClientIpAddress } = require("../../utils/ipAddress");
 
 exports.list = (req, res) => {
-  const { admin_id, _token, filter_status } = req.query;
+  const { admin_id, _token, from, to } = req.query;
 
   // Check for missing fields
   const missingFields = [];
@@ -66,13 +66,13 @@ exports.list = (req, res) => {
       // Fetch all required data
       const dataPromises = [
         new Promise((resolve) =>
-          ClientMasterTrackerModel.list(filter_status, (err, result) => {
+          ClientMasterTrackerModel.list(from, to, (err, result) => {
             if (err) return resolve([]);
             resolve(result);
           })
         ),
         new Promise((resolve) =>
-          ClientMasterTrackerModel.filterOptionsForCustomers((err, result) => {
+          ClientMasterTrackerModel.filterOptionsForCustomers(from, to, (err, result) => {
             if (err) return resolve([]);
             resolve(result);
           })

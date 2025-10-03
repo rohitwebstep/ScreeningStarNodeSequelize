@@ -375,13 +375,10 @@ async function reportFormJsonWithannexureData(client_application_id, service_id,
 }
 
 const Customer = {
-  list: async (filter_status, callback) => {
+  list: async (fromDate, toDate, callback) => {
     try {
       // const fromDate = '2025-01-01'; // replace with dynamic input
       // const toDate = '2025-12-31';   // replace with dynamic input
-
-      const fromDate = '';
-      const toDate = '';
 
       // Validate dates
       const validFrom = fromDate && !isNaN(new Date(fromDate));
@@ -601,31 +598,17 @@ const Customer = {
       const weekends = weekendResults[0]?.weekends ? JSON.parse(weekendResults[0].weekends) : [];
       const weekendsSet = new Set(weekends.map(day => day.toLowerCase()));
 
-      const now = new Date();
-      const month = `${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
-
       // Define SQL conditions for each filter status
       const conditions = {
-        overallCount: `AND (cmt.overall_status='wip' OR cmt.overall_status='insuff' OR cmt.overall_status='initiated' OR cmt.overall_status='hold' OR cmt.overall_status='closure advice' OR cmt.overall_status='stopcheck' OR cmt.overall_status='active employment' OR cmt.overall_status='nil' OR cmt.overall_status='' OR cmt.overall_status='not doable' OR cmt.overall_status='candidate denied' OR (cmt.overall_status='completed' AND cmt.report_date LIKE '%-${month}-%') OR (cmt.overall_status='completed' AND cmt.report_date NOT LIKE '%-${month}-%')) AND c.status = 1`,
-        qcStatusPendingCount: `AND ca.is_report_downloaded = '1' AND a.status NOT IN ('stopcheck','hold') AND LOWER(cmt.is_verify) = 'no' AND ca.status = 'completed'`,
-        wipCount: `AND cmt.overall_status = 'wip'`,
-        insuffCount: `AND cmt.overall_status = 'insuff'`,
-        completedGreenCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'GREEN'`,
-        completedRedCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'RED'`,
-        completedYellowCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'YELLOW'`,
-        completedPinkCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'PINK'`,
-        completedOrangeCount: `AND cmt.overall_status = 'completed' AND cmt.report_date LIKE '%-${month}-%' AND cmt.final_verification_status = 'ORANGE'`,
-        previousCompletedCount: `AND (cmt.overall_status = 'completed' AND cmt.report_date NOT LIKE '%-${month}-%') AND c.status=1`,
-        stopcheckCount: `AND cmt.overall_status = 'stopcheck'`,
-        activeEmploymentCount: `AND cmt.overall_status = 'active employment'`,
-        nilCount: `AND cmt.overall_status IN ('nil', '')`,
-        candidateDeniedCount: `AND cmt.overall_status = 'candidate denied'`,
-        notDoableCount: `AND cmt.overall_status = 'not doable'`,
-        initiatedCount: `AND cmt.overall_status = 'initiated'`,
-        holdCount: `AND cmt.overall_status = 'hold'`,
-        closureAdviceCount: `AND cmt.overall_status = 'closure advice'`
+        application_count: `AND ca.status NOT IN ('stopcheck','hold')`,
+        pending_application_count: `AND cmt.overall_status <> 'completed' AND ca.status NOT IN ('stopcheck','hold')`,
+        qc_pending_count: `AND cmt.overall_status = 'completed' AND cmt.is_verify = 'no'`,
+        completed_application_count: `AND cmt.overall_status = 'completed' AND cmt.is_verify = 'yes'`,
+        wip_application_count: `AND cmt.overall_status = 'wip'`,
+        insuff_application_count: `AND cmt.overall_status = 'insuff'`,
+        stopcheck_application_count: `AND cmt.overall_status = 'stopcheck'`,
+        not_doable_application_count: `AND cmt.overall_status = 'not_doable'`,
+        candidate_denied_application_count: `AND cmt.overall_status = 'candidate_denied'`
       };
 
       // Construct SQL condition based on filter_status
@@ -705,7 +688,7 @@ const Customer = {
       }
 
       // Final ordering of results
-      sql += ` ORDER BY ca.\`created_at\` DESC, ca.\`is_highlight\` DESC`;
+      sql += ` ORDER BY ca.\`created_at\` DESC, ca.\`is_highlight\` DESC LIMIT 10`;
       // Execute query
       const results = await sequelize.query(sql, { replacements: params, type: QueryTypes.SELECT });
 
@@ -1123,509 +1106,449 @@ const Customer = {
     callback(null, results);
   },
 
-  filterOptionsForCustomers: async (callback) => {
+  filterOptionsForCustomers: async (fromDate, toDate, callback) => {
+    try {
+      // Initialize default filter options
+      const filterOptions = {
+        "application_count": 0,
+        "pending_application_count": 0,
+        "qc_pending_count": 0,
+        "completed_application_count": 0,
+        "wip_application_count": 0,
+        "insuff_application_count": 0,
+        "stopcheck_application_count": 0,
+        "not_doable_application_count": 0,
+        "candidate_denied_application_count": 0
+      };
 
-    const now = new Date();
-    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+      // Validate date inputs
+      const validFrom = fromDate && !isNaN(new Date(fromDate));
+      const validTo = toDate && !isNaN(new Date(toDate));
 
-    const commonCondition = `(
-                                    (
-                                        MONTH(a.created_at) = MONTH(CURRENT_DATE())
-                                        AND YEAR(a.created_at) = YEAR(CURRENT_DATE())
-                                    )
-                                    OR
-                                    (
-                                        MONTH(a.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND YEAR(a.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
-                                    )
-                                )`;
-    let filterOptions = {
-      overallCount: 0,
-      qcStatusPendingCount: 0,
-      wipCount: 0,
-      insuffCount: 0,
-      previousCompletedCount: 0,
-      stopcheckCount: 0,
-      activeEmploymentCount: 0,
-      nilCount: 0,
-      notDoableCount: 0,
-      candidateDeniedCount: 0,
-      completedGreenCount: 0,
-      completedRedCount: 0,
-      completedYellowCount: 0,
-      completedPinkCount: 0,
-      completedOrangeCount: 0,
-    };
+      // Helper function to generate date filter for SQL
+      const dateFilter = (alias) =>
+        validFrom && validTo
+          ? `AND ${alias}.created_at BETWEEN '${fromDate}' AND '${toDate}'`
+          : "";
 
-    const overallCountSQL = `
-        SELECT
-          COUNT(*) as overall_count
-        FROM 
-          client_applications a 
-          JOIN customers c ON a.customer_id = c.id
-          JOIN cmt_applications b ON a.id = b.client_application_id 
-        WHERE
-          ${commonCondition}
-          AND c.is_deleted != 1
-          AND a.is_deleted != 1
-          AND (c.status = 1)
-          AND (
-            b.overall_status = 'wip'
-            OR b.overall_status = 'insuff'
-            OR (b.overall_status = 'completed' 
-              AND b.final_verification_status IN ('GREEN', 'RED', 'YELLOW', 'PINK', 'ORANGE')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-            )
-          )
-      `;
-    const overallCountResult = await sequelize.query(overallCountSQL, {
-      type: QueryTypes.SELECT,
-    });
-    if (overallCountResult.length > 0) {
-      filterOptions.overallCount = overallCountResult[0].overall_count || 0;
+      const sql = `
+      SELECT 
+        -- Application count (all branches)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca
+          WHERE ca.customer_id = c.id
+            AND ca.is_deleted != 1
+            AND ca.status NOT IN ('stopcheck','hold')
+            ${dateFilter('ca')}
+        ) AS application_count,
+
+        -- Pending application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca2
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca2.id
+            AND cmt.overall_status <> 'completed'
+          WHERE ca2.customer_id = c.id
+            AND ca2.is_deleted != 1
+            AND ca2.status NOT IN ('stopcheck','hold')
+            ${dateFilter('ca2')}
+        ) AS pending_application_count,
+
+        -- QC Pending (completed but not verified)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca3
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca3.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'no'
+          WHERE ca3.customer_id = c.id
+            AND ca3.is_deleted != 1
+            ${dateFilter('ca3')}
+        ) AS qc_pending_count,
+
+        -- Completed application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca4
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca4.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'yes'
+          WHERE ca4.customer_id = c.id
+            AND ca4.is_deleted != 1
+            ${dateFilter('ca4')}
+        ) AS completed_application_count,
+
+        -- WIP
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca5
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca5.id
+            AND cmt.overall_status = 'wip'
+          WHERE ca5.customer_id = c.id
+            AND ca5.is_deleted != 1
+            ${dateFilter('ca5')}
+        ) AS wip_application_count,
+
+        -- Insuff
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca6
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca6.id
+            AND cmt.overall_status = 'insuff'
+          WHERE ca6.customer_id = c.id
+            AND ca6.is_deleted != 1
+            ${dateFilter('ca6')}
+        ) AS insuff_application_count,
+
+        -- Stopcheck
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca7
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca7.id
+            AND cmt.overall_status = 'stopcheck'
+          WHERE ca7.customer_id = c.id
+            AND ca7.is_deleted != 1
+            ${dateFilter('ca7')}
+        ) AS stopcheck_application_count,
+
+        -- Not doable
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca8
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca8.id
+            AND cmt.overall_status = 'not_doable'
+          WHERE ca8.customer_id = c.id
+            AND ca8.is_deleted != 1
+            ${dateFilter('ca8')}
+        ) AS not_doable_application_count,
+
+        -- Candidate denied
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca9
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca9.id
+            AND cmt.overall_status = 'candidate_denied'
+          WHERE ca9.customer_id = c.id
+            AND ca9.is_deleted != 1
+            ${dateFilter('ca9')}
+        ) AS candidate_denied_application_count
+
+      FROM customers c
+      WHERE c.status = 1;
+    `;
+
+      // Execute query
+      const results = await sequelize.query(sql, { type: QueryTypes.SELECT });
+      console.log(`results - `, results);
+
+      const summary = results.reduce((acc, curr) => {
+        for (const key in curr) {
+          acc[key] = (acc[key] || 0) + curr[key];
+        }
+        return acc;
+      }, {});
+
+      // Return results via callback
+      return callback(null, summary || filterOptions);
+    } catch (err) {
+      console.error("Error in filterOptionsForCustomers:", err);
+      return callback({
+        status: false,
+        message: err.message || "Unexpected error occurred.",
+        data: {},
+      });
     }
-
-    const qcStatusPendingSQL = `
-          select
-            count(*) as overall_count
-          from 
-            client_applications a 
-            JOIN customers c ON a.customer_id = c.id
-            JOIN cmt_applications b ON a.id = b.client_application_id 
-          where
-            a.is_report_downloaded='1'
-            AND a.status NOT IN ('stopcheck','hold')
-            AND LOWER(b.is_verify)='no'
-            AND a.status='completed'
-            AND c.is_deleted != 1
-            AND a.is_deleted != 1
-          order by 
-            b.id DESC
-        `;
-
-    const qcStatusPendingResult = await sequelize.query(qcStatusPendingSQL, {
-      type: QueryTypes.SELECT,
-    });
-
-    if (qcStatusPendingResult.length > 0) {
-      filterOptions.qcStatusPendingCount = qcStatusPendingResult[0].overall_count || 0;
-    }
-
-    const wipInsuffSQL = `
-          SELECT 
-            b.overall_status, 
-            COUNT(*) AS overall_count
-          FROM 
-            client_applications a 
-            JOIN customers c ON a.customer_id = c.id
-            JOIN cmt_applications b ON a.id = b.client_application_id 
-          WHERE 
-            c.status = 1
-            AND b.overall_status IN ('wip', 'insuff')
-            AND a.is_deleted != 1
-            AND c.is_deleted != 1
-          GROUP BY 
-            b.overall_status
-        `;
-    const wipInsuffResult = await sequelize.query(wipInsuffSQL, {
-      type: QueryTypes.SELECT,
-    });
-    wipInsuffResult.forEach(row => {
-      if (row.overall_status === 'wip') {
-        filterOptions.wipCount = row.overall_count;
-      } else if (row.overall_status === 'insuff') {
-        filterOptions.insuffCount = row.overall_count;
-      }
-    });
-
-    const completedStocheckactiveEmployementNilNotDoubleCandidateDeniedSQL = `
-            SELECT
-              COUNT(*) as overall_count,
-              b.overall_status
-            from 
-              client_applications a 
-              JOIN customers c ON a.customer_id = c.id
-              JOIN cmt_applications b ON a.id = b.client_application_id 
-            where
-              ${commonCondition}
-              AND b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-              AND c.status=1
-              AND a.is_deleted != 1
-              AND c.is_deleted != 1
-            GROUP BY
-              b.overall_status
-          `;
-    const completedStocheckactiveEmployementNilNotDoubleCandidateDeniedResult = await sequelize.query(completedStocheckactiveEmployementNilNotDoubleCandidateDeniedSQL, {
-      type: QueryTypes.SELECT,
-    });
-
-    completedStocheckactiveEmployementNilNotDoubleCandidateDeniedResult.forEach(row => {
-      if (row.overall_status === 'completed') {
-        filterOptions.previousCompletedCount = row.overall_count;
-      } else if (row.overall_status === 'stopcheck') {
-        filterOptions.stopcheckCount = row.overall_count;
-      } else if (row.overall_status === 'active employment') {
-        filterOptions.activeEmploymentCount = row.overall_count;
-      } else if (row.overall_status === 'nil' || row.overall_status === '' || row.overall_status === null) {
-        filterOptions.nilCount = row.overall_count;
-      } else if (row.overall_status === 'not doable') {
-        filterOptions.notDoableCount = row.overall_count;
-      } else if (row.overall_status === 'candidate denied') {
-        filterOptions.candidateDeniedCount = row.overall_count;
-      }
-    });
-
-    const completedGreenRedYellowPinkOrangeSQL = `
-              SELECT
-                COUNT(*) as overall_count,
-                b.final_verification_status
-              from
-                client_applications a 
-                JOIN customers c ON a.customer_id = c.id
-                JOIN cmt_applications b ON a.id = b.client_application_id 
-              where
-                ${commonCondition}
-                AND b.overall_status ='completed'
-                AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                AND b.final_verification_status IN ('GREEN', 'RED', 'YELLOW', 'PINK', 'ORANGE')
-                AND c.status=1
-                AND a.is_deleted != 1
-                AND c.is_deleted != 1
-              GROUP BY
-                b.final_verification_status
-            `;
-    const completedGreenRedYellowPinkOrangeResult = await sequelize.query(completedGreenRedYellowPinkOrangeSQL, {
-      type: QueryTypes.SELECT,
-    });
-
-    completedGreenRedYellowPinkOrangeResult.forEach(row => {
-      if (row.final_verification_status === 'GREEN') {
-        filterOptions.completedGreenCount = row.overall_count;
-      } else if (row.final_verification_status === 'RED') {
-        filterOptions.completedRedCount = row.overall_count;
-      } else if (row.final_verification_status === 'YELLOW') {
-        filterOptions.completedYellowCount = row.overall_count;
-      } else if (row.final_verification_status === 'PINK') {
-        filterOptions.completedPinkCount = row.overall_count;
-      } else if (row.final_verification_status === 'ORANGE') {
-        filterOptions.completedOrangeCount = row.overall_count;
-      }
-    });
-
-    return callback(null, filterOptions);
   },
 
-  filterOptionsForApplicationListing: (customer_id, branch_id, callback) => {
-    const now = new Date();
-    const month = `${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const year = `${now.getFullYear()}`;
-    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+  filterOptionsForApplicationListing: async (customer_id, branch_id, callback) => {
+    try {
+      // Initialize default filter options
+      const filterOptions = {
+        "application_count": 0,
+        "pending_application_count": 0,
+        "qc_pending_count": 0,
+        "completed_application_count": 0,
+        "wip_application_count": 0,
+        "insuff_application_count": 0,
+        "stopcheck_application_count": 0,
+        "not_doable_application_count": 0,
+        "candidate_denied_application_count": 0
+      };
 
-    let filterOptions = {
-      overallCount: 0,
-      qcStatusPendingCount: 0,
-      wipCount: 0,
-      insuffCount: 0,
-      completedGreenCount: 0,
-      completedRedCount: 0,
-      completedYellowCount: 0,
-      completedPinkCount: 0,
-      completedOrangeCount: 0,
-      previousCompletedCount: 0,
-      stopcheckCount: 0,
-      activeEmploymentCount: 0,
-      nilCount: 0,
-      candidateDeniedCount: 0,
-      notDoableCount: 0,
-      initiatedCount: 0,
-      holdCount: 0,
-      closureAdviceCount: 0,
-    };
+      const sql = `
+      SELECT 
+        -- Application count (all branches)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca
+          WHERE ca.customer_id = c.id
+            AND ca.is_deleted != 1
+            AND ca.status NOT IN ('stopcheck','hold')
+            AND ca.branch_id = ${branch_id}
+        ) AS application_count,
 
-    const commonCondition = `(
-                                    (
-                                        MONTH(a.created_at) = MONTH(CURRENT_DATE())
-                                        AND YEAR(a.created_at) = YEAR(CURRENT_DATE())
-                                    )
-                                    OR
-                                    (
-                                        MONTH(a.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND YEAR(a.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
-                                    )
-                                )`;
+        -- Pending application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca2
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca2.id
+            AND cmt.overall_status <> 'completed'
+          WHERE ca2.customer_id = c.id
+            AND ca2.is_deleted != 1
+            AND ca2.status NOT IN ('stopcheck','hold')
+            AND ca2.branch_id = ${branch_id}
+        ) AS pending_application_count,
 
-    let conditions = {
-      overallCount: `AND ${commonCondition} AND (b.overall_status='wip' OR b.overall_status='insuff' OR b.overall_status='initiated' OR b.overall_status='hold' OR b.overall_status='closure advice' OR b.overall_status='stopcheck' OR b.overall_status='active employment' OR b.overall_status='nil' OR b.overall_status='' OR b.overall_status='not doable' OR b.overall_status='candidate denied' OR (b.overall_status='completed' AND b.report_date LIKE '%-${month}-%') OR (b.overall_status='completed' AND b.report_date NOT LIKE '%-${month}-%'))`,
-      qcStatusPendingCount: `AND a.is_report_downloaded='1' AND a.status NOT IN ('stopcheck','hold') AND LOWER(b.is_verify)='no' AND a.status='completed'`,
-      wipCount: `AND (b.overall_status = 'wip')`,
-      insuffCount: `AND (b.overall_status = 'insuff')`,
-      completedGreenCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='GREEN'`,
-      completedRedCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='RED'`,
-      completedYellowCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='YELLOW'`,
-      completedPinkCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='PINK'`,
-      completedOrangeCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date LIKE '%-${month}-%') AND b.final_verification_status='ORANGE'`,
-      previousCompletedCount: `AND ${commonCondition} AND (b.overall_status = 'completed' AND b.report_date NOT LIKE '%-${month}-%')`,
-      stopcheckCount: `AND ${commonCondition} AND (b.overall_status = 'stopcheck')`,
-      activeEmploymentCount: `AND ${commonCondition} AND (b.overall_status = 'active employment')`,
-      nilCount: `AND ${commonCondition} AND (b.overall_status = 'nil' OR b.overall_status = '')`,
-      candidateDeniedCount: `AND ${commonCondition} AND (b.overall_status = 'candidate denied')`,
-      notDoableCount: `AND ${commonCondition} AND (b.overall_status = 'not doable')`,
-      initiatedCount: `AND ${commonCondition} AND (b.overall_status = 'initiated')`,
-      holdCount: `AND ${commonCondition} AND (b.overall_status = 'hold')`,
-      closureAdviceCount: `AND ${commonCondition} AND (b.overall_status = 'closure advice')`
-    };
+        -- QC Pending (completed but not verified)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca3
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca3.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'no'
+          WHERE ca3.customer_id = c.id
+            AND ca3.is_deleted != 1
+            AND ca3.branch_id = ${branch_id}
+        ) AS qc_pending_count,
 
-    let sqlQueries = [];
+        -- Completed application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca4
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca4.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'yes'
+          WHERE ca4.customer_id = c.id
+            AND ca4.is_deleted != 1
+            AND ca4.branch_id = ${branch_id}
+        ) AS completed_application_count,
 
-    // Build SQL queries for each filter option
-    for (let key in filterOptions) {
-      if (filterOptions.hasOwnProperty(key)) {
-        let condition = conditions[key];
-        if (condition) {
-          const SQL = `
-              SELECT count(*) AS ${key}
-              FROM client_applications a
-              JOIN customers c ON a.customer_id = c.id
-              JOIN cmt_applications b ON a.id = b.client_application_id
-              WHERE a.customer_id = ? 
-              AND CAST(a.branch_id AS CHAR) = ? 
-              ${condition}
-              AND c.status = 1
-              AND a.is_deleted != 1
-              AND c.is_deleted != 1
-            `;
+        -- WIP
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca5
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca5.id
+            AND cmt.overall_status = 'wip'
+          WHERE ca5.customer_id = c.id
+            AND ca5.is_deleted != 1
+            AND ca5.branch_id = ${branch_id}
+        ) AS wip_application_count,
 
-          sqlQueries.push(new Promise(async (resolve, reject) => {
-            const result = await sequelize.query(SQL, {
-              replacements: [customer_id, branch_id], // Positional replacements using ?
-              type: QueryTypes.SELECT,
-            });
-            filterOptions[key] = result[0] ? result[0][key] : 0;
-            resolve();
-          }));
+        -- Insuff
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca6
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca6.id
+            AND cmt.overall_status = 'insuff'
+          WHERE ca6.customer_id = c.id
+            AND ca6.is_deleted != 1
+            AND ca6.branch_id = ${branch_id}
+        ) AS insuff_application_count,
+
+        -- Stopcheck
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca7
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca7.id
+            AND cmt.overall_status = 'stopcheck'
+          WHERE ca7.customer_id = c.id
+            AND ca7.is_deleted != 1
+            AND ca7.branch_id = ${branch_id}
+        ) AS stopcheck_application_count,
+
+        -- Not doable
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca8
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca8.id
+            AND cmt.overall_status = 'not_doable'
+          WHERE ca8.customer_id = c.id
+            AND ca8.is_deleted != 1
+            AND ca8.branch_id = ${branch_id}
+        ) AS not_doable_application_count,
+
+        -- Candidate denied
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca9
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca9.id
+            AND cmt.overall_status = 'candidate_denied'
+          WHERE ca9.customer_id = c.id
+            AND ca9.is_deleted != 1
+            AND ca9.branch_id = ${branch_id}
+        ) AS candidate_denied_application_count
+
+      FROM customers c
+      WHERE c.id = ${customer_id} AND c.status = 1;
+    `;
+
+      // Execute query
+      const results = await sequelize.query(sql, { type: QueryTypes.SELECT });
+      console.log(`results - `, results);
+
+      const summary = results.reduce((acc, curr) => {
+        for (const key in curr) {
+          acc[key] = (acc[key] || 0) + curr[key];
         }
-      }
-    }
+        return acc;
+      }, {});
 
-    // After all queries finish, execute the callback
-    Promise.all(sqlQueries)
-      .then(() => {
-        callback(null, filterOptions);
-      })
-      .catch((err) => {
-        callback(err, null);
+      // Return results via callback
+      return callback(null, summary || filterOptions);
+    } catch (err) {
+      console.error("Error in filterOptionsForCustomers:", err);
+      return callback({
+        status: false,
+        message: err.message || "Unexpected error occurred.",
+        data: {},
       });
+    }
   },
 
   filterOptionsForBranch: async (branch_id, callback) => {
-    const now = new Date();
-    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+    try {
+      // Initialize default filter options
+      const filterOptions = {
+        "application_count": 0,
+        "pending_application_count": 0,
+        "qc_pending_count": 0,
+        "completed_application_count": 0,
+        "wip_application_count": 0,
+        "insuff_application_count": 0,
+        "stopcheck_application_count": 0,
+        "not_doable_application_count": 0,
+        "candidate_denied_application_count": 0
+      };
 
-    let filterOptions = {
-      overallCount: 0,
-      qcStatusPendingCount: 0,
-      wipCount: 0,
-      insuffCount: 0,
-      previousCompletedCount: 0,
-      stopcheckCount: 0,
-      activeEmploymentCount: 0,
-      nilCount: 0,
-      notDoableCount: 0,
-      candidateDeniedCount: 0,
-      completedGreenCount: 0,
-      completedRedCount: 0,
-      completedYellowCount: 0,
-      completedPinkCount: 0,
-      completedOrangeCount: 0,
-    };
+      const sql = `
+      SELECT 
+        -- Application count (all branches)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca
+          WHERE ca.customer_id = c.id
+            AND ca.is_deleted != 1
+            AND ca.status NOT IN ('stopcheck','hold')
+            AND ca.branch_id = ${branch_id}
+        ) AS application_count,
 
-    const commonCondition = `(
-                                    (
-                                        MONTH(a.created_at) = MONTH(CURRENT_DATE())
-                                        AND YEAR(a.created_at) = YEAR(CURRENT_DATE())
-                                    )
-                                    OR
-                                    (
-                                        MONTH(a.created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND YEAR(a.created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)
-                                        AND a.status NOT IN ('completed','completed_green','completed_red','completed_yellow','completed_pink','completed_orange')
-                                    )
-                                )`;
+        -- Pending application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca2
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca2.id
+            AND cmt.overall_status <> 'completed'
+          WHERE ca2.customer_id = c.id
+            AND ca2.is_deleted != 1
+            AND ca2.status NOT IN ('stopcheck','hold')
+            AND ca2.branch_id = ${branch_id}
+        ) AS pending_application_count,
 
-    const overallCountSQL = `
-         SELECT
-          COUNT(*) as overall_count
-        FROM 
-          client_applications a 
-          JOIN customers c ON a.customer_id = c.id
-          JOIN cmt_applications b ON a.id = b.client_application_id 
-        WHERE
-          ${commonCondition}
-          AND (
-            b.overall_status = 'wip'
-            OR b.overall_status = 'insuff'
-            OR (b.overall_status = 'completed' 
-              AND b.final_verification_status IN ('GREEN', 'RED', 'YELLOW', 'PINK', 'ORANGE')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-            )
-          )
-          AND a.is_deleted != 1
-          AND c.is_deleted != 1
-          AND (c.status = 1)
-          AND CAST(a.branch_id AS CHAR) = ?
-      `;
-    // console.log(`overallCountSQL - `, overallCountSQL);
-    const overallCountResult = await sequelize.query(overallCountSQL, {
-      replacements: [String(branch_id)], // Positional replacements using ?
-      type: QueryTypes.SELECT,
-    });
-    if (overallCountResult.length > 0) {
-      filterOptions.overallCount = overallCountResult[0].overall_count || 0;
+        -- QC Pending (completed but not verified)
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca3
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca3.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'no'
+          WHERE ca3.customer_id = c.id
+            AND ca3.is_deleted != 1
+            AND ca3.branch_id = ${branch_id}
+        ) AS qc_pending_count,
+
+        -- Completed application count
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca4
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca4.id
+            AND cmt.overall_status = 'completed'
+            AND cmt.is_verify = 'yes'
+          WHERE ca4.customer_id = c.id
+            AND ca4.is_deleted != 1
+            AND ca4.branch_id = ${branch_id}
+        ) AS completed_application_count,
+
+        -- WIP
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca5
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca5.id
+            AND cmt.overall_status = 'wip'
+          WHERE ca5.customer_id = c.id
+            AND ca5.is_deleted != 1
+            AND ca5.branch_id = ${branch_id}
+        ) AS wip_application_count,
+
+        -- Insuff
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca6
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca6.id
+            AND cmt.overall_status = 'insuff'
+          WHERE ca6.customer_id = c.id
+            AND ca6.is_deleted != 1
+            AND ca6.branch_id = ${branch_id}
+        ) AS insuff_application_count,
+
+        -- Stopcheck
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca7
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca7.id
+            AND cmt.overall_status = 'stopcheck'
+          WHERE ca7.customer_id = c.id
+            AND ca7.is_deleted != 1
+            AND ca7.branch_id = ${branch_id}
+        ) AS stopcheck_application_count,
+
+        -- Not doable
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca8
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca8.id
+            AND cmt.overall_status = 'not_doable'
+          WHERE ca8.customer_id = c.id
+            AND ca8.is_deleted != 1
+            AND ca8.branch_id = ${branch_id}
+        ) AS not_doable_application_count,
+
+        -- Candidate denied
+        (
+          SELECT COUNT(*)
+          FROM client_applications ca9
+          INNER JOIN cmt_applications cmt ON cmt.client_application_id = ca9.id
+            AND cmt.overall_status = 'candidate_denied'
+          WHERE ca9.customer_id = c.id
+            AND ca9.is_deleted != 1
+            AND ca9.branch_id = ${branch_id}
+        ) AS candidate_denied_application_count
+
+      FROM customers c
+      WHERE c.status = 1;
+    `;
+
+      // Execute query
+      const results = await sequelize.query(sql, { type: QueryTypes.SELECT });
+      console.log(`results - `, results);
+
+      const summary = results.reduce((acc, curr) => {
+        for (const key in curr) {
+          acc[key] = (acc[key] || 0) + curr[key];
+        }
+        return acc;
+      }, {});
+
+      // Return results via callback
+      return callback(null, summary || filterOptions);
+    } catch (err) {
+      console.error("Error in filterOptionsForCustomers:", err);
+      return callback({
+        status: false,
+        message: err.message || "Unexpected error occurred.",
+        data: {},
+      });
     }
-
-    const qcStatusPendingSQL = `
-             select
-            count(*) as overall_count
-          from 
-            client_applications a 
-            JOIN customers c ON a.customer_id = c.id
-            JOIN cmt_applications b ON a.id = b.client_application_id 
-          where
-            a.is_report_downloaded='1'
-            AND LOWER(b.is_verify)='no'
-            AND a.status='completed'
-            AND a.is_deleted != 1
-            AND c.is_deleted != 1
-            AND CAST(a.branch_id AS CHAR) = ?
-          order by 
-            b.id DESC
-        `;
-    // console.log(`qcStatusPendingSQL - `, qcStatusPendingSQL);
-    const qcStatusPendingResult = await sequelize.query(qcStatusPendingSQL, {
-      replacements: [String(branch_id)], // Positional replacements using ?
-      type: QueryTypes.SELECT,
-    });
-
-    if (qcStatusPendingResult.length > 0) {
-      filterOptions.qcStatusPendingCount = qcStatusPendingResult[0].overall_count || 0;
-    }
-
-    const wipInsuffSQL = `
-           SELECT 
-            b.overall_status, 
-            COUNT(*) AS overall_count
-          FROM 
-            client_applications a 
-            JOIN customers c ON a.customer_id = c.id
-            JOIN cmt_applications b ON a.id = b.client_application_id 
-          WHERE 
-            c.status = 1
-            AND b.overall_status IN ('wip', 'insuff')
-            AND CAST(a.branch_id AS CHAR) = ?
-            AND a.is_deleted != 1
-            AND c.is_deleted != 1
-          GROUP BY 
-            b.overall_status
-        `;
-    // console.log(`wipInsuffSQL - `, wipInsuffSQL);
-
-    const wipInsuffResult = await sequelize.query(wipInsuffSQL, {
-      replacements: [String(branch_id)], // Positional replacements using ?
-      type: QueryTypes.SELECT,
-    });
-
-    wipInsuffResult.forEach(row => {
-      if (row.overall_status === 'wip') {
-        filterOptions.wipCount = row.overall_count;
-      } else if (row.overall_status === 'insuff') {
-        filterOptions.insuffCount = row.overall_count;
-      }
-    });
-
-    const completedStocheckactiveEmployementNilNotDoubleCandidateDeniedSQL = `
-            SELECT
-              COUNT(*) as overall_count,
-              b.overall_status
-            from 
-              client_applications a 
-              JOIN customers c ON a.customer_id = c.id
-              JOIN cmt_applications b ON a.id = b.client_application_id 
-            where
-              ${commonCondition}
-              AND b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-              AND c.status=1
-              AND CAST(a.branch_id AS CHAR) = ?
-              AND a.is_deleted != 1
-              AND c.is_deleted != 1
-            GROUP BY
-              b.overall_status
-          `;
-    // console.log(`completedStocheckactiveEmployementNilNotDoubleCandidateDeniedSQL - `, completedStocheckactiveEmployementNilNotDoubleCandidateDeniedSQL);
-    const completedStocheckactiveEmployementNilNotDoubleCandidateDeniedResult = await sequelize.query(completedStocheckactiveEmployementNilNotDoubleCandidateDeniedSQL, {
-      replacements: [String(branch_id)], // Positional replacements using ?
-      type: QueryTypes.SELECT,
-    });
-    completedStocheckactiveEmployementNilNotDoubleCandidateDeniedResult.forEach(row => {
-      if (row.overall_status === 'completed') {
-        filterOptions.previousCompletedCount = row.overall_count;
-      } else if (row.overall_status === 'stopcheck') {
-        filterOptions.stopcheckCount = row.overall_count;
-      } else if (row.overall_status === 'active employment') {
-        filterOptions.activeEmploymentCount = row.overall_count;
-      } else if (row.overall_status === 'nil' || row.overall_status === '' || row.overall_status === null) {
-        filterOptions.nilCount = row.overall_count;
-      } else if (row.overall_status === 'not doable') {
-        filterOptions.notDoableCount = row.overall_count;
-      } else if (row.overall_status === 'candidate denied') {
-        filterOptions.candidateDeniedCount = row.overall_count;
-      }
-    });
-
-    const completedGreenRedYellowPinkOrangeSQL = `
-              SELECT
-              COUNT(*) as overall_count,
-              b.overall_status
-            from 
-              client_applications a 
-              JOIN customers c ON a.customer_id = c.id
-              JOIN cmt_applications b ON a.id = b.client_application_id 
-            where
-              ${commonCondition}
-              AND b.overall_status IN ('completed','stopcheck','active employment','nil','not doable','candidate denied')
-              AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-              AND c.status=1
-              AND CAST(a.branch_id AS CHAR) = ?
-              AND a.is_deleted != 1
-              AND c.is_deleted != 1
-            GROUP BY
-              b.overall_status
-            `;
-    // console.log(`completedGreenRedYellowPinkOrangeSQL - `, completedGreenRedYellowPinkOrangeSQL);
-    const completedGreenRedYellowPinkOrangeResult = await sequelize.query(completedGreenRedYellowPinkOrangeSQL, {
-      replacements: [String(branch_id)], // Positional replacements using ?
-      type: QueryTypes.SELECT,
-    });
-    completedGreenRedYellowPinkOrangeResult.forEach(row => {
-      if (row.final_verification_status === 'GREEN') {
-        filterOptions.completedGreenCount = row.overall_count;
-      } else if (row.final_verification_status === 'RED') {
-        filterOptions.completedRedCount = row.overall_count;
-      } else if (row.final_verification_status === 'YELLOW') {
-        filterOptions.completedYellowCount = row.overall_count;
-      } else if (row.final_verification_status === 'PINK') {
-        filterOptions.completedPinkCount = row.overall_count;
-      } else if (row.final_verification_status === 'ORANGE') {
-        filterOptions.completedOrangeCount = row.overall_count;
-      }
-    });
-    return callback(null, filterOptions);
   },
 
   getCMTApplicationById: async (client_application_id, callback) => {
@@ -1875,8 +1798,6 @@ const Customer = {
         console.error("Error during ALTER or entry check:", err);
         callback(err, null);
       });
-
-
   },
 
   createOrUpdateAnnexure: async (

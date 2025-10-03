@@ -25,7 +25,7 @@ const { getClientIpAddress } = require("../../utils/ipAddress");
 
 // Controller to list all customers
 exports.list = (req, res) => {
-  const { admin_id, _token, filter_status } = req.query;
+  const { admin_id, _token, from, to } = req.query;
 
   // Check for missing fields
   const missingFields = [];
@@ -67,13 +67,13 @@ exports.list = (req, res) => {
       // Fetch all required data
       const dataPromises = [
         new Promise((resolve) =>
-          ClientMasterTrackerModel.list(filter_status, (err, result) => {
+          ClientMasterTrackerModel.list(from, to, (err, result) => {
             if (err) return resolve([]);
             resolve(result);
           })
         ),
         new Promise((resolve) =>
-          ClientMasterTrackerModel.filterOptionsForCustomers((err, result) => {
+          ClientMasterTrackerModel.filterOptionsForCustomers(from, to, (err, result) => {
             if (err) return resolve([]);
             resolve(result);
           })
@@ -254,6 +254,7 @@ exports.applicationListByBranch = (req, res) => {
       });
     }
 
+    console.log(`Step - 1`);
     Branch.getBranchById(branch_id, (err, currentBranch) => {
       if (err) {
         console.error("Database error during branch retrieval:", err);
@@ -270,7 +271,7 @@ exports.applicationListByBranch = (req, res) => {
           message: "Branch not found.",
         });
       }
-
+    console.log(`Step - 2`);
       Customer.infoByID(
         parseInt(currentBranch.customer_id),
         (err, currentCustomer) => {
@@ -290,6 +291,8 @@ exports.applicationListByBranch = (req, res) => {
               token: newToken,
             });
           }
+    console.log(`Step - 3`);
+
           // Verify admin token
           AdminCommon.isAdminTokenValid(_token, admin_id, (err, result) => {
             if (err) {
@@ -315,6 +318,7 @@ exports.applicationListByBranch = (req, res) => {
             ) {
               let status = null;
             }
+    console.log(`Step - 5`);
 
             ClientMasterTrackerModel.applicationListByBranch(
               filter_status,
@@ -330,6 +334,7 @@ exports.applicationListByBranch = (req, res) => {
                     token: newToken,
                   });
                 }
+    console.log(`Step - 6`);
 
                 ClientMasterTrackerModel.filterOptionsForApplicationListing(currentBranch.customer_id, branch_id, (err, filterOptions) => {
                   if (err) {
@@ -904,8 +909,9 @@ exports.annexureData = (req, res) => {
 };
 
 exports.customerFilterOption = (req, res) => {
+  const { from, to } = req.query;
 
-  ClientMasterTrackerModel.filterOptionsForCustomers((err, filterOptions) => {
+  ClientMasterTrackerModel.filterOptionsForCustomers(from, to, (err, filterOptions) => {
     if (err) {
       console.error("Database error:", err);
       return res.status(500).json({
